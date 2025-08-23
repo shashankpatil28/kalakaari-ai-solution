@@ -1,10 +1,11 @@
-from google.adk.agents import Agent
 import os
-from .sub_agents.greeting_agent.agent import greeting_agent  # Corrected import statement
-
+from dotenv import load_dotenv
+from google.adk.agents import Agent
+from .sub_agents.onboarding_agent.agent import onboarding_agent
+from .sub_agents.greeting_agent.agent import greeting_agent  
 from .promt import ORCHESTRATION_PROMPT 
 
-from dotenv import load_dotenv
+
 load_dotenv()
 
 root_agent = Agent(
@@ -16,5 +17,6 @@ root_agent = Agent(
         "starting with a greeting and then moving to the onboarding process."
     ),
     instruction=ORCHESTRATION_PROMPT,
-    sub_agents=[greeting_agent]  # Add the greeting_agent as a sub-agent
+    sub_agents=[greeting_agent,
+                onboarding_agent ]  
 )
