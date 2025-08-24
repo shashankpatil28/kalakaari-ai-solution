@@ -1,3 +1,5 @@
 google-adk
 uvicorn
 fastapi
+dotenv
+pydantic[email]
