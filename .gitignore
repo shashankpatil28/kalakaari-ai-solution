@@ -116,3 +116,8 @@ pnpm-debug.log*
 .terraform/
 .gcloud/
 .aws/
+
+
+# Ignore secrets
+master-ip/contracts/.env
+master-ip/app/.env
