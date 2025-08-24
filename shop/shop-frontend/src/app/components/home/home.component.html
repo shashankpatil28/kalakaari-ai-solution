@@ -1,0 +1,24 @@
+<div class="p-6">
+  <div class="flex justify-between items-center mb-6">
+    <h2 class="text-2xl font-bold text-blue-700">Welcome to MyShop</h2>
+    <div>
+      <span class="mr-4 text-gray-700">Hello, {{ auth.currentUser()?.displayName || auth.currentUser()?.email }}</span>
+      <button 
+        (click)="auth.logout()" 
+        class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">
+        Logout
+      </button>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+    <div *ngFor="let product of products" class="bg-white p-4 rounded-lg shadow hover:shadow-lg transition">
+      <img [src]="product.image" alt="{{ product.name }}" class="w-full h-40 object-cover rounded-md mb-3">
+      <h3 class="text-lg font-semibold text-gray-800">{{ product.name }}</h3>
+      <p class="text-blue-600 font-bold mt-2">₹{{ product.price }}</p>
+      <button class="mt-3 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 w-full">
+        Add to Cart
+      </button>
+    </div>
+  </div>
+</div>

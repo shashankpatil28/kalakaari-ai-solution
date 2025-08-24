@@ -1,12 +1,15 @@
 import { Injectable, signal, effect } from '@angular/core';
-import { Auth, user as authUser,
-         createUserWithEmailAndPassword,
-         signInWithEmailAndPassword,
-         signOut,
-         setPersistence,
-         browserLocalPersistence,
-         updateProfile,
-         getIdToken } from '@angular/fire/auth';
+import {
+  Auth,
+  user as authUser,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
+  setPersistence,
+  browserLocalPersistence,
+  updateProfile,
+  getIdToken
+} from '@angular/fire/auth';
 import { Router } from '@angular/router';
 
 @Injectable({ providedIn: 'root' })
@@ -16,6 +19,7 @@ export class AuthService {
   constructor(private auth: Auth, private router: Router) {
     authUser(this.auth).subscribe(u => {
       this.currentUser.set(u ?? null);
+
       if (u) {
         getIdToken(u).then(token => localStorage.setItem('idToken', token));
         localStorage.setItem('uid', u.uid);
@@ -24,7 +28,8 @@ export class AuthService {
         localStorage.removeItem('uid');
       }
     });
-    effect(() => {}); // optional for reactive tracking
+
+    effect(() => {}); // optional reactive tracking
   }
 
   isLoggedIn(): boolean {
@@ -34,7 +39,9 @@ export class AuthService {
   async signup(email: string, password: string, displayName?: string) {
     await setPersistence(this.auth, browserLocalPersistence);
     const cred = await createUserWithEmailAndPassword(this.auth, email, password);
-    if (displayName) await updateProfile(cred.user, { displayName });
+    if (displayName) {
+      await updateProfile(cred.user, { displayName });
+    }
     return cred.user;
   }
 

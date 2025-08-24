@@ -2,7 +2,7 @@ import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
-import { AuthService } from '../auth/auth.service';
+import { AuthService } from '../../services/auth.service'; // <-- updated path
 
 @Component({
   selector: 'app-signup',
@@ -30,7 +30,7 @@ export class SignupComponent {
     this.loading = true;
     try {
       await this.auth.signup(this.email, this.password, this.name);
-      this.message = 'Signup successful! Redirecting...';
+      this.message = '✅ Signup successful! Redirecting...';
       setTimeout(() => this.router.navigate(['/home']), 1500);
     } catch (e: any) {
       this.message = this.humanizeError(e?.message || e?.code || 'Signup failed');
