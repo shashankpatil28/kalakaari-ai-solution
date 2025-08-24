@@ -1,14 +1,13 @@
 import os
+import json
+import uuid
 from google.adk.agents import Agent
+
 from .prompt import ONBOARDING_PROMPT
 from typing import List, Optional, Dict
-from uuid import UUID
 from pydantic import BaseModel, Field, EmailStr
 
-# Import this to handle JSON serialization within the tool
-import json
-
-# --- Pydantic Models for Schema Validation ---
+# --- Pydantic Models for Schema Validation (These are correct) ---
 
 class ContactInfo(BaseModel):
     email: Optional[EmailStr] = None
@@ -16,27 +15,27 @@ class ContactInfo(BaseModel):
     address: Optional[str] = None
 
 class Artisan(BaseModel):
-    id: UUID = Field(..., description="Unique UUID for the artisan")
+    id: str
     name: str
     contact_info: ContactInfo
     skills: List[str]
-    products: List[UUID]
-    agents: List[UUID]
+    products: List[str]
+    agents: List[str]
 
 class AgentData(BaseModel):
-    id: UUID
+    id: str
     name: str
     organization: str
     specialization: List[str]
     contact_info: ContactInfo
-    artisans: List[UUID]
+    artisans: List[str]
 
 class IPStatus(BaseModel):
     is_ip_registered: bool = False
     ip_type: Optional[str] = None
     registration_number: Optional[str] = None
-    registration_date: Optional[str] = None # Using string for easier handling with LLM
-    expiry_date: Optional[str] = None # Using string for easier handling with LLM
+    registration_date: Optional[str] = None
+    expiry_date: Optional[str] = None
 
 class PowerOfAttorney(BaseModel):
     granted: bool
@@ -51,40 +50,39 @@ class PreviousIPRights(BaseModel):
     right_owners: RightOwners
 
 class Authorization(BaseModel):
-    id: UUID
-    artisan_id: UUID
-    agent_id: UUID
+    id: str
+    artisan_id: str
+    agent_id: str
     consent_from_artisan: bool
     no_objection_certificate: bool
     power_of_attorney: PowerOfAttorney
     previous_ip_rights: PreviousIPRights
-    date_granted: Optional[str] = None # Using string for easier handling with LLM
-    valid_till: Optional[str] = None # Using string for easier handling with LLM
+    date_granted: Optional[str] = None
+    valid_till: Optional[str] = None
 
 class Rules(BaseModel):
-    id: UUID
-    product_id: UUID
+    id: str
+    product_id: str
     allow_reproduction: bool
     allow_resale: bool
     allow_derivative: bool
     allow_commercial_use: bool
     allow_ai_training: bool
-    license_duration: str # Using text for 'interval'
+    license_duration: str
     geographical_limit: str
     royalty_percentage: float
 
 class Product(BaseModel):
-    id: UUID
-    artisan_id: UUID
+    id: str
+    artisan_id: str
     name: str
     description: str
     category: str
     media: List[str]
     ip_status: IPStatus
-    authorization_id: UUID
-    rules: List[UUID]
+    authorization_id: str
+    rules: List[str]
 
-# Main, top-level schema
 class CompleteArtisanData(BaseModel):
     artisan: List[Artisan]
     agent: List[AgentData]
@@ -92,37 +90,98 @@ class CompleteArtisanData(BaseModel):
     authorization: List[Authorization]
     rules: List[Rules]
 
-# --- Tool Definition ---
+from ..ip_agent.agent import ip_agent
 
-# def finalize_and_pass_data(onboarding_data: Dict) -> str:
-#     """
-#     Finalizes the onboarding process by validating the collected data against the
-#     complete schema and returns a JSON string for the next agent.
-    
-#     Args:
-#         onboarding_data: A dictionary containing all the collected artisan information.
-    
-#     Returns:
-#         A JSON string of the validated data or an error message.
-#     """
-#     try:
-#         # Pydantic validates the entire dictionary against the defined schema.
-#         # This will raise a ValidationError if any required fields are missing
-#         # or data types are incorrect.
-#         # validated_data = CompleteArtisanData.model_validate(onboarding_data)
-        
-#         # If validation is successful, return the data as a clean JSON string.
-#         return onboarding_data.model_dump_json(indent=2)
-#     except Exception as e:
-#         # Return a clear error message if validation fails.
-#         return f"Error: Data validation failed. Details: {e}"
+# --- The New Tool to Structure Data ---
+
+
+def structure_onboarding_data(
+    full_name: str, contact_info: str, address: str, artisan_type: str, nationality: str,
+    artwork_name: str, description: str, category: str, materials_techniques: str, creation_date: str,
+    cultural_significance: str, artwork_media: str,
+    original_creator: bool, consent_ip_registration: bool, is_derivative: bool, disputes_joint_ownership: bool,
+    allow_reproduction: bool, allow_resale: bool, allow_derivative: bool, allow_commercial_use: bool, allow_ai_training: bool,
+    geographical_limit: str, royalty_percentage: float
+) -> str:
+    """
+    Takes all collected information from the conversation, generates UUIDs,
+    structures it into the required complex JSON format, and returns it as a string.
+    """
+    try:
+        # Generate all necessary UUIDs
+        artisan_id = str(uuid.uuid4())
+        agent_id = str(uuid.uuid4()) # Example agent ID
+        product_id = str(uuid.uuid4())
+        auth_id = str(uuid.uuid4())
+        rule_id = str(uuid.uuid4())
+
+        # Build the structured data using Pydantic models
+        complete_data = CompleteArtisanData(
+            artisan=[Artisan(
+                id=artisan_id,
+                name=full_name,
+                contact_info=ContactInfo(phone=contact_info, address=address),
+                skills=[artisan_type],
+                products=[product_id],
+                agents=[agent_id]
+            )],
+            agent=[AgentData(
+                id=agent_id,
+                name="Kalakaari AI Agent", # Example agent data
+                organization="Kalakaari AI",
+                specialization=["IP Registration"],
+                contact_info=ContactInfo(email="support@kalakaari.ai"),
+                artisans=[artisan_id]
+            )],
+            product=[Product(
+                id=product_id,
+                artisan_id=artisan_id,
+                name=artwork_name,
+                description=description,
+                category=category,
+                media=[artwork_media], # Assuming this is the base64 string
+                ip_status=IPStatus(is_ip_registered=False, ip_type="Copyright"),
+                authorization_id=auth_id,
+                rules=[rule_id]
+            )],
+            authorization=[Authorization(
+                id=auth_id,
+                artisan_id=artisan_id,
+                agent_id=agent_id,
+                consent_from_artisan=consent_ip_registration,
+                no_objection_certificate=not disputes_joint_ownership,
+                power_of_attorney=PowerOfAttorney(granted=True, trademark_office=False),
+                previous_ip_rights=PreviousIPRights(
+                    is_derivative=is_derivative,
+                    right_owners=RightOwners(has_rights=False, names=[])
+                )
+            )],
+            rules=[Rules(
+                id=rule_id,
+                product_id=product_id,
+                allow_reproduction=allow_reproduction,
+                allow_resale=allow_resale,
+                allow_derivative=allow_derivative,
+                allow_commercial_use=allow_commercial_use,
+                allow_ai_training=allow_ai_training,
+                license_duration="Perpetual", # Example value
+                geographical_limit=geographical_limit,
+                royalty_percentage=royalty_percentage
+            )]
+        )
+
+        # Return the validated data as a clean JSON string
+        return complete_data.model_dump_json(indent=2)
+    except Exception as e:
+        return f"Error: Failed to structure data. Details: {e}"
 
 # --- Agent Definition ---
 
 onboarding_agent = Agent(
     name="onboarding_agent",
     model=os.getenv("MODEL_NAME"),
-    description="Collects artisan details and completes onboarding.",
+    description="Collects artisan details and uses a tool to structure the data before calling the IP agent.",
     instruction=ONBOARDING_PROMPT,
-    # tools=[finalize_and_pass_data]
+    tools=[structure_onboarding_data], # <-- ADD THE TOOL HERE
+    sub_agents=[ip_agent]
 )

@@ -13,4 +13,5 @@ greeting_agent = Agent(
     description="A simple greeting agent that introduces the Artisan IP platform.",
     instruction=GREETING_PROMPT,
     tools=[]  # This agent does not need any tools
+    # sub_agents=[]  # No sub-agents for the greeting agent
 )
