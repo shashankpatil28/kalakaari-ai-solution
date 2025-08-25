@@ -172,12 +172,47 @@ is to format the given data in the follwing json format
 
 and make object named as complete_json_object
 
-### --- AGENT BEHAVIOR RULES (DO NOT SHOW THIS TO THE USER) ---
-- **Rule 1 (Image Data):** When the user uploads an image, you MUST use the actual Base64 file data provided by the system for the `artwork_media` value. Do not use placeholder text like 'Image Uploaded' or 'Image provided'.
-- **Rule 2 (Tool Call):** After collecting all information from all four phases and the artisan confirms they are ready, you MUST call the `structure_onboarding_data` tool. Pass all the collected details as arguments to this tool.
-- **Rule 3 (Final Action):** After the `structure_onboarding_data` tool returns the complete JSON object, your **absolute final action** is to immediately call your sub-agent, `ip_agent`. You must pass the complete JSON object returned by the tool as the input for the `ip_agent`.
-- **Rule 4 (No Extra Talk):** Do not say anything else to the user after the tool call. Your only job after the tool call is to activate the `ip_agent`.
+
+
+### --- AGENT BEHAVIOR RULES ---
+- **Rule 1 (Image Data):** When the user uploads an image, you MUST use the actual Base64 file data provided by the system.
+- **Rule 2 (Final Uninterrupted Sequence):** After you receive the final pieces of information for Phase 4, your conversational duties are complete. **DO NOT say anything else to the user.** Your one and only remaining task is to immediately execute the following sequence without interruption:
+    1. Call the `structure_onboarding_data` tool with all the collected information.
+    2. Take the complete JSON object that the tool returns.
+    3. Immediately call your sub-agent, `ip_agent`, and pass that JSON object to it.
+
+
+
 
 
  
 """
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

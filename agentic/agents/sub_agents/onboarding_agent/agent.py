@@ -1,13 +1,13 @@
 import os
-import json
 import uuid
 from google.adk.agents import Agent
-
 from .prompt import ONBOARDING_PROMPT
-from typing import List, Optional, Dict
+from typing import List, Optional
 from pydantic import BaseModel, Field, EmailStr
 
-# --- Pydantic Models for Schema Validation (These are correct) ---
+from ..ip_agent.agent import ip_agent  # Import the IP agent
+
+# ------------------- Pydantic Models -------------------
 
 class ContactInfo(BaseModel):
     email: Optional[EmailStr] = None
@@ -78,7 +78,7 @@ class Product(BaseModel):
     name: str
     description: str
     category: str
-    media: List[str]
+    media: List[str]   # Base64 image string
     ip_status: IPStatus
     authorization_id: str
     rules: List[str]
@@ -90,10 +90,7 @@ class CompleteArtisanData(BaseModel):
     authorization: List[Authorization]
     rules: List[Rules]
 
-from ..ip_agent.agent import ip_agent
-
-# --- The New Tool to Structure Data ---
-
+# ------------------- Data Structuring Tool -------------------
 
 def structure_onboarding_data(
     full_name: str, contact_info: str, address: str, artisan_type: str, nationality: str,
@@ -103,19 +100,15 @@ def structure_onboarding_data(
     allow_reproduction: bool, allow_resale: bool, allow_derivative: bool, allow_commercial_use: bool, allow_ai_training: bool,
     geographical_limit: str, royalty_percentage: float
 ) -> str:
-    """
-    Takes all collected information from the conversation, generates UUIDs,
-    structures it into the required complex JSON format, and returns it as a string.
-    """
+    """Takes all collected info and structures it into the required JSON schema."""
     try:
-        # Generate all necessary UUIDs
+        # Generate UUIDs
         artisan_id = str(uuid.uuid4())
-        agent_id = str(uuid.uuid4()) # Example agent ID
+        agent_id = str(uuid.uuid4())
         product_id = str(uuid.uuid4())
         auth_id = str(uuid.uuid4())
         rule_id = str(uuid.uuid4())
 
-        # Build the structured data using Pydantic models
         complete_data = CompleteArtisanData(
             artisan=[Artisan(
                 id=artisan_id,
@@ -127,7 +120,7 @@ def structure_onboarding_data(
             )],
             agent=[AgentData(
                 id=agent_id,
-                name="Kalakaari AI Agent", # Example agent data
+                name="Kalakaari AI Agent",
                 organization="Kalakaari AI",
                 specialization=["IP Registration"],
                 contact_info=ContactInfo(email="support@kalakaari.ai"),
@@ -139,7 +132,7 @@ def structure_onboarding_data(
                 name=artwork_name,
                 description=description,
                 category=category,
-                media=[artwork_media], # Assuming this is the base64 string
+                media=[artwork_media],  # Base64 string
                 ip_status=IPStatus(is_ip_registered=False, ip_type="Copyright"),
                 authorization_id=auth_id,
                 rules=[rule_id]
@@ -164,24 +157,24 @@ def structure_onboarding_data(
                 allow_derivative=allow_derivative,
                 allow_commercial_use=allow_commercial_use,
                 allow_ai_training=allow_ai_training,
-                license_duration="Perpetual", # Example value
+                license_duration="Perpetual",
                 geographical_limit=geographical_limit,
                 royalty_percentage=royalty_percentage
             )]
         )
 
-        # Return the validated data as a clean JSON string
         return complete_data.model_dump_json(indent=2)
+
     except Exception as e:
         return f"Error: Failed to structure data. Details: {e}"
 
-# --- Agent Definition ---
+# ------------------- Agent Definition -------------------
 
 onboarding_agent = Agent(
     name="onboarding_agent",
     model=os.getenv("MODEL_NAME"),
-    description="Collects artisan details and uses a tool to structure the data before calling the IP agent.",
+    description="Collects artisan details, structures them, then calls ip_agent.",
     instruction=ONBOARDING_PROMPT,
-    tools=[structure_onboarding_data], # <-- ADD THE TOOL HERE
+    tools=[structure_onboarding_data],
     sub_agents=[ip_agent]
 )
