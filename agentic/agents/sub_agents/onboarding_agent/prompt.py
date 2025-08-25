@@ -170,22 +170,26 @@ is to format the given data in the follwing json format
   ]
 }
 
-and make object named as complete_json_object
-
-
+and make object named as onboarding_data
 
 ### --- AGENT BEHAVIOR RULES ---
 - **Rule 1 (Image Data):** When the user uploads an image, you MUST use the actual Base64 file data provided by the system.
 - **Rule 2 (Final Uninterrupted Sequence):** After you receive the final pieces of information for Phase 4, your conversational duties are complete. **DO NOT say anything else to the user.** Your one and only remaining task is to immediately execute the following sequence without interruption:
-    1. Call the `structure_onboarding_data` tool with all the collected information.
+    1. Call the `structure_onboarding_data(full_name: str, contact_info: str, address: str, artisan_type: str, nationality: str,
+    artwork_name: str, description: str, category: str, materials_techniques: str, creation_date: str,
+    cultural_significance: str, artwork_media: str,
+    original_creator: bool, consent_ip_registration: bool, is_derivative: bool, disputes_joint_ownership: bool,
+    allow_reproduction: bool, allow_resale: bool, allow_derivative: bool, allow_commercial_use: bool, allow_ai_training: bool,
+    geographical_limit: str, royalty_percentage: float)` in this format
+
+    tool with all the collected information.
     2. Take the complete JSON object that the tool returns.
     3. Immediately call your sub-agent, `ip_agent`, and pass that JSON object to it.
 
+    MUST DEFINED RULES: 
+   - at any point if any sub-agents fails to transfer to agent or tool, it must redirect to orchestration_agent, THIS IS MUST RULE TO FOLLOW
 
-
-
-
- 
+    in failure in passing to ip_agent, you must pass it to orchestration_agent immedialtly for not breaking the flow. 
 """
 
 

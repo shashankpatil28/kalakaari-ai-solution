@@ -176,5 +176,5 @@ onboarding_agent = Agent(
     description="Collects artisan details, structures them, then calls ip_agent.",
     instruction=ONBOARDING_PROMPT,
     tools=[structure_onboarding_data], # <-- ADD THE TOOL HERE
-    # sub_agents=[]
+    sub_agents=[ip_agent]
 )

@@ -6,7 +6,6 @@ from .sub_agents.greeting_agent.agent import greeting_agent
 from .sub_agents.ip_agent.agent import ip_agent
 from .prompt import ORCHESTRATION_PROMPT 
 
-
 load_dotenv()
 
 root_agent = Agent(
@@ -19,5 +18,5 @@ root_agent = Agent(
     ),
     instruction=ORCHESTRATION_PROMPT,
     sub_agents=[greeting_agent,
-                onboarding_agent, ip_agent ]  
+                onboarding_agent ]  
 )
