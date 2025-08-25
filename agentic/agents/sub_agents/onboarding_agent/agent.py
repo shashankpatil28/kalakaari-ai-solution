@@ -175,6 +175,6 @@ onboarding_agent = Agent(
     model=os.getenv("MODEL_NAME"),
     description="Collects artisan details, structures them, then calls ip_agent.",
     instruction=ONBOARDING_PROMPT,
-    tools=[structure_onboarding_data],
-    sub_agents=[ip_agent]
+    tools=[structure_onboarding_data], # <-- ADD THE TOOL HERE
+    # sub_agents=[]
 )

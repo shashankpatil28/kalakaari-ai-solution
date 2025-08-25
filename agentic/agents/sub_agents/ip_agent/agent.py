@@ -6,7 +6,10 @@ import faiss
 import numpy as np
 from PIL import Image
 from google.adk.agents import Agent
+
 from .prompt import IP_PROMPT
+from .tools import ip_service_tool # <-- Import the new tool
+
 from dotenv import load_dotenv
 from transformers import CLIPProcessor, CLIPModel
 import torch
@@ -122,5 +125,7 @@ ip_agent = Agent(
     model=os.getenv("MODEL_NAME"),
     description="Verifies artwork uniqueness using CLIP embeddings + FAISS similarity search.",
     instruction=IP_PROMPT,
-    tools=[check_artwork_uniqueness],
+    tools=[ip_service_tool] # <-- Register the tool with the agent
+    tools=[ip_service_tool] # <-- Register the tool with the agent
+    tools=[check_artwork_uniqueness, ip_service_tool],
 )

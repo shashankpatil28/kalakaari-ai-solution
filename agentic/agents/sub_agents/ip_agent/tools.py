@@ -1,110 +1,63 @@
 # agentic/agents/sub_agents/ip_agent/tools.py
 
-import os
-import base64
-import io
-import faiss
-import numpy as np
-from PIL import Image
+import requests
+import json
+from google.adk.tools import FunctionTool
 
-from google.adk.decorators import tool
-
-
-from transformers import CLIPProcessor, CLIPModel
-import torch
-
-# --- CONFIGURATION ---
-# Define the Hugging Face model we'll use for embeddings
-MODEL_NAME = "openai/clip-vit-base-patch32"
-# Define where the local vector database file will be stored
-FAISS_INDEX_FILE = "artwork_index.faiss"
-# The number of dimensions for the CLIP model's embeddings
-EMBEDDING_DIM = 512
-# Similarity threshold: if a new image is >95% similar to an existing one, it's a duplicate.
-SIMILARITY_THRESHOLD = 0.95
-
-# --- GLOBAL SETUP (Load model and index once) ---
-# Load the pre-trained CLIP model and its processor from Hugging Face
-print(f"Loading Hugging Face model: {MODEL_NAME}...")
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-MODEL = CLIPModel.from_pretrained(MODEL_NAME).to(DEVICE)
-PROCESSOR = CLIPProcessor.from_pretrained(MODEL_NAME)
-print("Model loaded successfully.")
-
-# Load the FAISS index from the file if it exists, otherwise create a new one
-if os.path.exists(FAISS_INDEX_FILE):
-    print(f"Loading existing FAISS index from {FAISS_INDEX_FILE}...")
-    faiss_index = faiss.read_index(FAISS_INDEX_FILE)
-    print("FAISS index loaded.")
-else:
-    print("No FAISS index found, creating a new one.")
-    # Using IndexFlatIP for Cosine Similarity after normalization
-    faiss_index = faiss.IndexFlatIP(EMBEDDING_DIM)
-
-def get_image_embedding(image: Image.Image) -> np.ndarray:
+def call_master_ip_service(onboarding_data: str) -> dict:
     """
-    Generates a vector embedding from a PIL image using the loaded CLIP model.
-    """
-    with torch.no_grad():
-        inputs = PROCESSOR(images=image, return_tensors="pt", padding=True).to(DEVICE)
-        image_features = MODEL.get_image_features(**inputs)
-    
-    # Normalize the embedding for cosine similarity search in FAISS
-    embedding = image_features.cpu().numpy()
-    faiss.normalize_L2(embedding)
-    return embedding
-
-@tool
-def check_artwork_uniqueness(image_base64: str) -> dict:
-    """
-    Checks if an artwork is unique by creating an embedding using a Hugging Face
-    CLIP model and searching for similar items in a local FAISS vector index.
-    If the image is unique, its embedding is added to the index.
+    Makes an API call to the master IP backend service to submit the artisan's data.
 
     Args:
-        image_base64: The base64 encoded string of the artwork image.
+        onboarding_data: The complete JSON data packet as a string.
+
+    Returns:
+        A dictionary with a 'status' key ('success' or 'error') and a 'message'
+        key containing either a success confirmation or an error description.
     """
     try:
-        # 1. Decode the image and get its embedding
-        image_bytes = base64.b64decode(image_base64)
-        image = Image.open(io.BytesIO(image_bytes))
-        new_embedding = get_image_embedding(image)
+        # The onboarding_data is a string, so we need to parse it to a Python dictionary
+        data_payload = json.loads(onboarding_data)
 
-        # 2. Search the FAISS index for the most similar image
-        if faiss_index.ntotal == 0:
-            print("Index is empty. This is the first artwork.")
-            is_unique = True
-        else:
-            # Search for the 1 nearest neighbor
-            distances, indices = faiss_index.search(new_embedding, 1)
-            similarity_score = distances[0][0]
-            print(f"Nearest neighbor found with similarity score: {similarity_score:.4f}")
+        # Define the API endpoint
+        url = "http://localhost:8001/create"
 
-            if similarity_score > SIMILARITY_THRESHOLD:
-                is_unique = False
-            else:
-                is_unique = True
-        
-        # 3. Handle the result
-        if is_unique:
-            # If the artwork is unique, add its embedding to the index for future checks
-            print("Artwork is unique. Adding to FAISS index.")
-            faiss_index.add(new_embedding)
-            # Save the updated index back to the file
-            faiss.write_index(faiss_index, FAISS_INDEX_FILE)
-            print("FAISS index saved.")
-            return {"is_unique": True}
-        else:
-            # If a duplicate is found, do not add it to the index
-            print("Duplicate artwork found.")
+        # Make the POST request to the backend service
+        response = requests.post(url, json=data_payload, timeout=30)
+        response.raise_for_status() # Raise an exception for bad status codes (4xx or 5xx)
+
+        # Check for a successful response (e.g., 200 OK, 201 Created)
+        if response.status_code in [200, 201]:
+            # Assuming the master service returns a success message
             return {
-                "is_unique": False,
-                "message": f"A highly similar artwork was found with {similarity_score * 100:.2f}% similarity."
+                "status": "success",
+                "message": "Your IP data has been successfully submitted for verification. We will notify you once the process is complete.",
+                "response": response,
+            }
+        else:
+            return {
+                "status": "error",
+                "message": f"An unexpected error occurred with the service. Status code: {response.status_code}"
             }
 
-    except Exception as e:
-        print(f"An error occurred in the tool: {e}")
+    except requests.exceptions.RequestException as e:
+        # Handle network-related errors (e.g., connection refused, timeout)
         return {
-            "is_unique": False,
-            "message": "An unexpected technical error occurred while checking the artwork."
+            "status": "error",
+            "message": f"We are currently unable to connect to the IP service. Please try again later. Error: {e}"
         }
+    except json.JSONDecodeError:
+        # Handle cases where the input data is not valid JSON
+        return {
+            "status": "error",
+            "message": "The data format received was invalid. Please restart the process."
+        }
+    except Exception as e:
+        # Handle any other unexpected errors
+        return {
+            "status": "error",
+            "message": f"An unexpected error occurred during the submission process. Error: {e}"
+        }
+
+# Create the FunctionTool instance
+ip_service_tool = FunctionTool(func=call_master_ip_service)

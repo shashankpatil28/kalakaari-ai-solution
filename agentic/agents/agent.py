@@ -19,5 +19,5 @@ root_agent = Agent(
     ),
     instruction=ORCHESTRATION_PROMPT,
     sub_agents=[greeting_agent,
-                onboarding_agent ]  
+                onboarding_agent, ip_agent ]  
 )
