@@ -1,0 +1,72 @@
+.env
+back_env/
+
+__pycache__/
+*.pyc
+# Python cache and bytecode
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pkl
+*.log
+
+# Virtual environments
+venv/
+.env/
+.env.bak/
+env/
+.venv/
+
+# Environment variables
+*.env
+.env.local
+.env.*.local
+
+# IDE/editor configs
+.vscode/
+.idea/
+*.swp
+*~
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# Test & coverage
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+pytest_cache/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+.eggs/
+*.manifest
+*.spec
+
+# FastAPI/uvicorn logs
+*.pid
+*.db
+*.sqlite3
+
+# Mypy / type checker
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre / pytype
+.pyre/
+.pytype/
+
+# Jupyter Notebook checkpoints (if used)
+.ipynb_checkpoints
+
+# Local development files
+*.local
+
