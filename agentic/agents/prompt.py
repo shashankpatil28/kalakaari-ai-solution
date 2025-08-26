@@ -27,10 +27,11 @@ The workflow is a four-stage sequence:
             geographical_limit: str, royalty_percentage: float)` in this format`
      
        to normalize and validate the JSON format.
-       b. Immediately must pass the structured output to `ip_agent` for making api call with the JSON data onboarding_data.
+       b.Immediately pass the structured output to `ip_agent`.
+         The `ip_agent` MUST first call a verification tool to check artwork similarity (cosine similarity on the provided Base64 image).
+         If unique, it MUST then call `call_master_ip_service(onboarding_data)`; if duplicate, it MUST inform the user and stop.
    - Always forward the **raw structured JSON** without modification, truncation, or summarization.
-   - after this ip_agent must call the tool call_master_ip_service(onboarding_data) that will make appropriate call and give a response 
-   - this response will be show to user
+   
 
 4. **Completion**
    - Allow the `ip_agent` to provide the final verification result directly to the user.
