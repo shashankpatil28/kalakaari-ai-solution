@@ -1,6 +1,18 @@
+# Core API and server
 fastapi
 uvicorn[standard]
+
+# Data validation and utilities
+pydantic
+python-jose[cryptography]
+python-multipart
+
+# Database (if you are using one)
 SQLAlchemy>=2.0
 psycopg2-binary
 python-dotenv
-pydantic
+
+# QR code generation
+qrcode[pil]
+jwt
+pydantic[email]

@@ -1,14 +1,16 @@
 # app/main.py
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, EmailStr
-from typing import Optional
 import uvicorn
-from datetime import datetime
+from datetime import datetime, timedelta
+import hashlib
+import jwt
+import json
+import os
 
 # ==============================================================================
 # 1. Pydantic Models for Prototype Schema
 # ==============================================================================
-
 class Artisan(BaseModel):
     name: str
     location: str
@@ -26,9 +28,29 @@ class OnboardingData(BaseModel):
     art: Art
 
 # ==============================================================================
-# 2. FastAPI Application
+# 2. DB 
 # ==============================================================================
+DATABASE_FILE = "craftid_db.json"
+SECRET_KEY = "shashankpatil2811"  # Use env variable in production
+ALGORITHM = "HS256"
 
+def get_db():
+    if not os.path.exists(DATABASE_FILE):
+        with open(DATABASE_FILE, "w") as f:
+            json.dump([], f)
+    with open(DATABASE_FILE, "r") as f:
+        try:
+            return json.load(f)
+        except json.JSONDecodeError:
+            return []
+
+def save_db(data):
+    with open(DATABASE_FILE, "w") as f:
+        json.dump(data, f, indent=4)
+
+# ==============================================================================
+# 3. FastAPI Application
+# ==============================================================================
 app = FastAPI(title="Master-IP Prototype Service", version="0.1.0")
 
 @app.get("/health")
@@ -40,43 +62,81 @@ def root():
     return {"message": "Prototype Master-IP backend is running!"}
 
 # ==============================================================================
-# 3. POST Endpoint (/create)
+# 4. POST Endpoint (/create)
 # ==============================================================================
-
 @app.post("/create")
-async def create_ip_record(onboarding_data: OnboardingData):
-    """
-    Receives simplified onboarding JSON (artisan + art details),
-    prints it for verification, and returns a dummy structured response.
-    """
-    # Log received data (for developer visibility)
-    print("\n=========================================================")
-    print("✅ Received onboarding data from IP agent:")
-    print(onboarding_data.model_dump_json(indent=2))
-    print("=========================================================\n")
+def create_craftid(data: OnboardingData):
+    db = get_db()
 
-    # Dummy structured response
+    # Step 1: Check for uniqueness
+    for entry in db:
+        try:
+            existing_art_name = entry["original_onboarding_data"]["art"]["name"]
+            if existing_art_name.lower() == data.art.name.lower():
+                raise HTTPException(
+                    status_code=409,
+                    detail="A similar product name already exists. Please provide a more unique name."
+                )
+        except KeyError:
+            # If old entries don’t follow the new structure, skip them
+            continue
+
+    # Step 2: Generate IDs and Hashes
+    public_id = f"CID-{len(db) + 1:05d}"
+
+    # Create a JWT token as the private key
+    payload = {"public_id": public_id, "exp": datetime.utcnow() + timedelta(days=365)}
+    private_key = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+
+    # Generate a public hash
+    public_hash = hashlib.sha256(
+        (data.art.name + data.art.description + data.art.photo).encode()
+    ).hexdigest()
+
+    # Step 3: Prepare and Store the new CraftID
+    new_craftid = {
+        "public_id": public_id,
+        "private_key": private_key,
+        "public_hash": public_hash,
+        "original_onboarding_data": data.dict(),
+        "timestamp": datetime.utcnow().isoformat() + "Z"
+    }
+    db.append(new_craftid)
+    save_db(db)
+
+    # Step 4: Construct the response
+    transaction_id = "tx_" + datetime.utcnow().strftime("%Y%m%d%H%M%S")
+
     response_data = {
         "status": "success",
-        "message": "Your CraftID submission has been received and queued for IP verification.",
-        "transaction_id": "tx_" + datetime.utcnow().strftime("%Y%m%d%H%M%S"),
+        "message": f"Your CraftID for '{data.art.name}' has been created successfully.",
+        "transaction_id": transaction_id,
         "timestamp": datetime.utcnow().isoformat() + "Z",
         "verification": {
-            "estimated_completion": "24-48 hours",
-            "next_steps": [
-                "An IP specialist will review your submission.",
-                "You will receive a confirmation email after verification is complete."
-            ]
+            "public_id": public_id,
+            "private_key": private_key,
+            "public_hash": public_hash,
+            "verification_url": f"http://localhost:8001/verify/{public_id}",
+            "qr_code_link": f"http://localhost:8001/verify/qr/{public_id}"
         },
+        "artisan_info": {
+            "name": data.artisan.name,
+            "location": data.artisan.location
+        },
+        "art_info": {
+            "name": data.art.name,
+            "description": data.art.description
+        },
+        "original_onboarding_data": data.dict(),
         "links": {
-            "track_status": "http://localhost:8001/status/"
+            "track_status": f"http://localhost:8001/status/{transaction_id}",
+            "shop_listing": f"http://localhost:8001/shop/{public_id}"
         }
     }
     return response_data
 
 # ==============================================================================
-# 4. Entry Point
+# 5. Entry Point
 # ==============================================================================
-
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8001)
