@@ -1,8 +1,7 @@
 import os
 from dotenv import load_dotenv
 from google.adk.agents import Agent
-from .sub_agents.onboarding_agent.agent import onboarding_agent
-from .sub_agents.greeting_agent.agent import greeting_agent  
+from .sub_agents.onboarding_agent.agent import onboarding_agent  
 from .sub_agents.ip_agent.agent import ip_agent
 from .prompt import ORCHESTRATION_PROMPT 
 
@@ -17,6 +16,5 @@ root_agent = Agent(
         "starting with a greeting and then moving to the onboarding process and then move to the ip agent"
     ),
     instruction=ORCHESTRATION_PROMPT,
-    sub_agents=[greeting_agent,
-                onboarding_agent ]  
+    sub_agents=[onboarding_agent, ip_agent]  
 )

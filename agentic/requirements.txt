@@ -3,3 +3,7 @@ uvicorn
 fastapi
 dotenv
 pydantic[email]
+
+logging
+requests
+
