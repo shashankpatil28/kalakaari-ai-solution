@@ -30,10 +30,9 @@ export interface Product {
   providedIn: 'root'
 })
 export class ApiClientService {
-  private readonly apiUrl = 'http://localhost:8002/get-products';
+  private readonly apiUrl = 'https://basic-backend-fastapi.vercel.app/get-products';
 
   constructor(private http: HttpClient) { }
-
   /**
    * Fetches all products from the shop backend.
    * @returns An Observable of an array of Product objects.

@@ -11,6 +11,42 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
+def call_add_product(onboarding_data: str) -> dict:
+    """
+    Tool for shop_agent:
+    Submits onboarding data to the shop backend (/add-product).
+
+    Args:
+        onboarding_data (str): JSON string containing onboarding details.
+
+    Returns:
+        dict: Structured response.
+    """
+    try:
+        payload = json.loads(onboarding_data)
+    except json.JSONDecodeError as e:
+        logger.error("Invalid onboarding_data JSON: %s", e)
+        return {"status": "error", "message": "Invalid onboarding data format."}
+
+    url = os.getenv("SHOP_ENDPOINT", "https://basic-backend-fastapi.vercel.app/add-product")
+    logger.info(f"[shop_agent] Posting to {url}")
+
+    try:
+        resp = requests.post(url, json=payload, timeout=30)
+        resp.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        logger.error("[shop_agent] Request to /add-product failed: %s", e)
+        return {"status": "error", "message": "Unable to connect to shop service now. Please try later.", "details": str(e)}
+
+    # success
+    try:
+        body = resp.json()
+    except Exception:
+        body = resp.text
+
+    return {"status": "success", "message": "Product listed.", "response": body}
+
 def call_master_ip_service(onboarding_data: str) -> dict:
     """
     Tool for ip_agent:
@@ -91,5 +127,5 @@ ip_agent = Agent(
     model=os.getenv("MODEL_NAME"),
     description="Verifies artwork uniqueness (cosine similarity) before submitting to the Master IP service.",
     instruction=IP_PROMPT,
-    tools=[call_master_ip_service]
+    tools=[call_master_ip_service, call_add_product]
 )
