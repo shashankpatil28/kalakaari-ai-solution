@@ -17,6 +17,7 @@
         "build": {
           "builder": "@angular/build:application",
           "options": {
+            "outputPath": "dist/kalaakari-shop",
             "stylePreprocessorOptions": {
                 "includePaths": [
                   "src"

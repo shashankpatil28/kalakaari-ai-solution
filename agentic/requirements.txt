@@ -1,10 +1,10 @@
 google-adk
 uvicorn
 fastapi
-dotenv
+python-dotenv
 pydantic[email]
 
 logging
 requests
-psycopg2-binary
+SQLAlchemy
 
