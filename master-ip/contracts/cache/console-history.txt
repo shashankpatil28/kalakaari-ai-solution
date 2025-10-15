@@ -1,2 +1,0 @@
-ethers.formatEther(await ethers.provider.getBalance("0x093BF14462D6f2FEDFC2CB5bbfB71c8D6459e613"))
-(await ethers.provider.getBalance("0x093BF14462D6f2FEDFC2CB5bbfB71c8D6459e613")).toString()
