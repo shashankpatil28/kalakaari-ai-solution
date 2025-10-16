@@ -16,5 +16,5 @@ root_agent = Agent(
         "starting with a greeting and then moving to the onboarding process and then move to the ip agent"
     ),
     instruction=ORCHESTRATION_PROMPT,
-    sub_agents=[onboarding_agent, ip_agent]  
+    sub_agents=[onboarding_agent]  
 )
