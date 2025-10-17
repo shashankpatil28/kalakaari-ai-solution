@@ -1,39 +1,58 @@
-# agents/sub_agents/onboarding_agent/tools.py
-import json
+import os
+import cloudinary
+import cloudinary.uploader
+from dotenv import load_dotenv
 
-def package_onboarding_data(onboarding_data: str) -> str:
+# This is the single, correct, and verified way to import the ADK library
+# to access its services like 'files'.
+import google.adk as adk
+
+# Load environment variables
+load_dotenv()
+
+# Configure the Cloudinary client
+cloudinary.config(cloud_url=os.getenv("CLOUDINARY_URL"))
+
+def upload_image_to_cloudinary(image_uri: str) -> str:
     """
-    This tool is called when the onboarding agent has successfully collected all artisan and art data.
-    It packages the data into a final JSON object with a status, indicating that the next step is to
-    invoke the ip_agent. This entire JSON object is then returned as a string to the orchestrator.
+    This tool takes an image's file URI (a string provided by the system when a
+    user uploads a file), retrieves the image data using the ADK file service,
+    uploads it to Cloudinary, and returns its secure, downloadable URL.
 
     Args:
-        onboarding_data (str): A JSON string containing the structured data for the artisan and their art.
+        image_uri (str): The file URI of the uploaded image (e.g., 'file://_p0_...')
 
     Returns:
-        str: A JSON string containing a status wrapper and the original data,
-             signaling the orchestration_agent to proceed to the next step.
+        str: The secure URL of the uploaded image, or an error message if it fails.
     """
-    print("--- Tool Activated: Packaging onboarding_data ---")
+    if not os.getenv("CLOUDINARY_URL"):
+        return "Error: CLOUDINARY_URL environment variable is not set."
+    
     try:
-        # Parse the incoming JSON string to validate it
-        data = json.loads(onboarding_data)
+        print(f"--- TOOL: Received image URI: {image_uri} ---")
         
-        # Create the final payload for the orchestrator
-        final_payload = {
-            "status": "ONBOARDING_COMPLETE",
-            "message": "Artisan details collected. Ready for IP creation process.",
-            "data": data  # This is the original artisan/art JSON
-        }
-        
-        # Return the entire payload as a JSON string
-        return json.dumps(final_payload, indent=2)
+        # Access the files service through the 'adk' module to get the content.
+        # This is the correct and working method.
+        image_data = adk.files.get_content(image_uri)
 
-    except json.JSONDecodeError as e:
-        # Handle cases where the LLM provides invalid JSON
-        error_payload = {
-            "status": "ERROR",
-            "message": "Failed to package data due to invalid JSON format.",
-            "details": str(e)
-        }
-        return json.dumps(error_payload, indent=2)
+        print("--- TOOL: Attempting to upload image to Cloudinary... ---")
+        
+        # Upload the image bytes to a specific folder
+        upload_result = cloudinary.uploader.upload(
+            image_data,
+            folder="craft_id_artworks"
+        )
+        
+        # Safely get the secure URL from the response
+        secure_url = upload_result.get("secure_url")
+        
+        if secure_url:
+            print(f"--- TOOL: Upload successful. URL: {secure_url} ---")
+            return secure_url
+        else:
+            print("--- TOOL: Upload failed. No secure_url in response. ---")
+            return "Error: Could not retrieve URL from Cloudinary response."
+
+    except Exception as e:
+        print(f"--- TOOL: Cloudinary upload failed: {e} ---")
+        return f"Error: Image upload failed. Details: {str(e)}"
