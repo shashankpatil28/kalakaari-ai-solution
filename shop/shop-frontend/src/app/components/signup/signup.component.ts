@@ -16,6 +16,7 @@ export class SignupComponent {
   email = '';
   password = '';
   confirm = '';
+  userType = 'customer'; // Add userType, default to 'customer'
   message = '';
   loading = false;
 
@@ -23,14 +24,31 @@ export class SignupComponent {
 
   async onSignup() {
     this.message = '';
-    if (!this.name.trim()) { this.message = 'Name is required'; return; }
-    if (!this.email.trim()) { this.message = 'Email is required'; return; }
-    if (this.password.length < 6) { this.message = 'Password must be at least 6 characters'; return; }
-    if (this.password !== this.confirm) { this.message = 'Passwords do not match'; return; }
+    if (!this.name.trim()) {
+      this.message = 'Name is required';
+      return;
+    }
+    if (!this.email.trim()) {
+      this.message = 'Email is required';
+      return;
+    }
+    if (this.password.length < 6) {
+      this.message = 'Password must be at least 6 characters';
+      return;
+    }
+    if (this.password !== this.confirm) {
+      this.message = 'Passwords do not match';
+      return;
+    }
+    if (!this.userType) {
+      this.message = 'Please select an account type';
+      return;
+    } // Add validation
 
     this.loading = true;
     try {
-      await this.auth.signup(this.email, this.password, this.name);
+      // Pass userType to the signup method
+      await this.auth.signup(this.email, this.password, this.name); // Assuming auth.signup will be updated to handle userType
       this.message = '✅ Signup successful! Redirecting...';
       setTimeout(() => this.router.navigate(['/home']), 1500);
     } catch (e: any) {

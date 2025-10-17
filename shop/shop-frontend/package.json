@@ -23,6 +23,7 @@
   "private": true,
   "dependencies": {
     "@angular-devkit/build-angular": "^20.2.0",
+    "@angular/animations": "^20.3.6",
     "@angular/common": "^20.2.0",
     "@angular/compiler": "^20.2.0",
     "@angular/core": "^20.2.0",

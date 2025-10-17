@@ -1,53 +1,69 @@
-<div class="flex items-center justify-center min-h-screen px-4">
-  <div class="w-full max-w-md bg-surface border border-secondary shadow-lg rounded-2xl p-8">
-    <div class="text-center mb-8">
-      <h2 class="text-3xl font-bold text-accent mb-2">Welcome Back</h2>
-      <p class="text-text-muted">Sign in to access the Artisan Gallery.</p>
+<!-- shop/shop-frontend/src/app/components/login/login.component.html -->
+<div class="fixed inset-0 top-[69px] bg-background overflow-hidden">
+  <div class="container h-full mx-auto flex items-center">
+    <!-- Left side - SVG -->
+    <div class="hidden md:flex w-1/2 h-full items-center justify-center p-12">
+      <img src="/loginpage.svg" alt="Artisan Illustration" class="max-w-full max-h-[86%]" />
     </div>
 
-    <div class="mb-4">
-      <label for="email" class="block text-text-muted text-sm font-medium mb-2">Email</label>
-      <input
-        id="email"
-        [(ngModel)]="email"
-        type="email"
-        placeholder="you@example.com"
-        class="w-full px-4 py-3 bg-background border border-secondary rounded-lg text-accent placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
-      />
+    <!-- Right side - Form -->
+    <div class="w-full md:w-1/2 flex items-center justify-center p-8">
+      <div class="w-full max-w-md bg-surface border border-secondary shadow-lg rounded-2xl p-8">
+        <div class="text-center mb-8">
+          <h2 class="text-3xl font-bold text-accent mb-2">Welcome Back</h2>
+          <p class="text-text-muted">Sign in to access the Artisan Gallery.</p>
+        </div>
+
+        <!-- Email Input -->
+        <div class="mb-4">
+          <label for="email" class="block text-text-muted text-sm font-medium mb-2">Email</label>
+          <input
+            id="email"
+            [(ngModel)]="email"
+            type="email"
+            placeholder="you@example.com"
+            class="w-full px-4 py-3 bg-background border border-secondary rounded-lg text-accent placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+          />
+        </div>
+
+        <!-- Password Input -->
+        <div class="mb-6">
+          <label for="password" class="block text-text-muted text-sm font-medium mb-2"
+            >Password</label
+          >
+          <input
+            id="password"
+            [(ngModel)]="password"
+            type="password"
+            placeholder="••••••••"
+            class="w-full px-4 py-3 bg-background border border-secondary rounded-lg text-accent placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+          />
+        </div>
+
+        <!-- Message -->
+        <p
+          *ngIf="message"
+          class="text-center text-sm mb-4"
+          [ngClass]="message.includes('successful') ? 'text-green-400' : 'text-red-400'"
+        >
+          {{ message }}
+        </p>
+
+        <!-- Login Button -->
+        <button
+          (click)="onLogin()"
+          [disabled]="loading"
+          class="w-full bg-primary text-background font-bold py-3 rounded-lg hover:bg-primary-light transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {{ loading ? 'Logging in...' : 'Login' }}
+        </button>
+
+        <!-- Signup Link -->
+        <p class="text-center text-sm text-text-muted mt-6">
+          Don’t have an account?
+          <a routerLink="/signup" class="font-medium text-accent hover:underline">Sign up</a>
+        </p>
+      </div>
     </div>
-
-    <div class="mb-6">
-      <label for="password" class="block text-text-muted text-sm font-medium mb-2"
-        >Password</label
-      >
-      <input
-        id="password"
-        [(ngModel)]="password"
-        type="password"
-        placeholder="••••••••"
-        class="w-full px-4 py-3 bg-background border border-secondary rounded-lg text-accent placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
-      />
-    </div>
-
-    <p
-      *ngIf="message"
-      class="text-center text-sm mb-4"
-      [ngClass]="message.includes('successful') ? 'text-green-400' : 'text-red-400'"
-    >
-      {{ message }}
-    </p>
-
-    <button
-      (click)="onLogin()"
-      [disabled]="loading"
-      class="w-full bg-primary text-background font-bold py-3 rounded-lg hover:bg-primary-light transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-    >
-      {{ loading ? 'Logging in...' : 'Login' }}
-    </button>
-
-    <p class="text-center text-sm text-text-muted mt-6">
-      Don’t have an account?
-      <a routerLink="/signup" class="font-medium text-accent hover:underline">Sign up</a>
-    </p>
   </div>
 </div>

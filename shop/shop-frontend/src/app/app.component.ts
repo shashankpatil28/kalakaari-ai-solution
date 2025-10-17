@@ -1,6 +1,7 @@
 // shop/shop-frontend/src/app/app.component.ts
 import { Component } from '@angular/core';
-import { RouterModule } from '@angular/router';
+import { ChildrenOutletContexts, RouterModule } from '@angular/router';
+import { routerAnimation } from './animation'; // Import animation
 
 @Component({
   selector: 'app-root',
@@ -24,10 +25,18 @@ import { RouterModule } from '@angular/router';
         </div>
       </div>
     </nav>
-
-    <main class="container py-10">
-      <router-outlet></router-outlet>
+    <main>
+      <div [@routerAnimation]="getRouteAnimationData()">
+        <router-outlet></router-outlet>
+      </div>
     </main>
   `,
+  animations: [routerAnimation], // Add animations property
 })
-export class AppComponent {}
+export class AppComponent {
+  constructor(private contexts: ChildrenOutletContexts) {}
+
+  getRouteAnimationData() {
+    return this.contexts.getContext('primary')?.route?.snapshot?.data?.['animation'];
+  }
+}
