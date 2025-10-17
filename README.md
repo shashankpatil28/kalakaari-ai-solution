@@ -1,3 +1,5 @@
+<!-- TEST COMMIT  -->
+
 # 🎨 Kalakaari AI - Authentic Craft Verification Platform
 
 **Empowering Indian Artisans with Blockchain-Verified Authenticity**
