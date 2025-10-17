@@ -4,7 +4,7 @@ from fastapi import FastAPI, HTTPException
 from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routes.craftid import router as craftid_router
+from app.routes import craft_controllers
 from app.routes.products import router as products_router
 
 # Import helper from your mongodb.py
@@ -28,7 +28,7 @@ app.add_middleware(
 )
 
 # include routers
-app.include_router(craftid_router)
+app.include_router(craft_controllers.router)
 app.include_router(products_router)
 
 
