@@ -1,3 +1,4 @@
+// shop/shop-frontend/src/app/app.component.ts
 import { Component } from '@angular/core';
 import { RouterModule } from '@angular/router';
 
@@ -6,14 +7,27 @@ import { RouterModule } from '@angular/router';
   standalone: true,
   imports: [RouterModule],
   template: `
-    <nav class="flex items-center justify-between px-6 py-3 bg-blue-600 text-white shadow-md">
-      <h1 class="text-xl font-bold">🛍️ MyShop</h1>
-      <div class="flex gap-4">
-        <a routerLink="/login" class="hover:underline">Login</a>
-        <a routerLink="/signup" class="hover:underline">Signup</a>
+    <nav class="bg-surface sticky top-0 z-50 border-b border-secondary">
+      <div class="container flex items-center justify-between py-4">
+        <h1 class="text-2xl font-bold text-accent">Kalaakari Shop</h1>
+        <div class="flex items-center gap-6">
+          <a
+            routerLink="/login"
+            class="font-medium text-text-muted hover:text-accent transition-colors duration-300"
+            >Login</a
+          >
+          <a
+            routerLink="/signup"
+            class="font-medium text-text-muted hover:text-accent transition-colors duration-300"
+            >Sign Up</a
+          >
+        </div>
       </div>
     </nav>
-    <router-outlet></router-outlet>
+
+    <main class="container py-10">
+      <router-outlet></router-outlet>
+    </main>
   `,
 })
 export class AppComponent {}

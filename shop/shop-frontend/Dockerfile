@@ -1,3 +1,4 @@
+# shop/shop-frontend/Dockerfile
 # -------- Stage 1: Build Angular app --------
 FROM node:20-alpine AS build
 

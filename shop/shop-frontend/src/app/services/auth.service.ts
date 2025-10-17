@@ -1,3 +1,4 @@
+// shop/shop-frontend/src/app/services/auth.service.ts
 import { Injectable, signal, effect } from '@angular/core';
 import {
   Auth,
