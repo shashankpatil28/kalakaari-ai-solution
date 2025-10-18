@@ -46,22 +46,6 @@ To allow the FastAPI code to `from image_search.clip_embedder import ClipEmbedde
 From repo root `master-ip`:
 
 ```bash
-# rename image-search -> image_search if you haven't already (recommended)
-git mv image-search image_search || mv image-search image_search
-
-# ensure package marker (safe no-op if exists)
-touch image_search/__init__.py
-
-# create a minimal setup.py (if not present)
-cat > image_search/setup.py <<'PY'
-from setuptools import setup, find_packages
-setup(
-    name="image_search",
-    version="0.1.0",
-    packages=find_packages(),
-    include_package_data=True,
-)
-PY
 
 # install it into the same venv used by server
 python -m pip install -e ./image_search
@@ -90,7 +74,7 @@ Set env vars (do **not** commit secrets):
 ```bash
 # inside .venv
 export PINECONE_API_KEY="YOUR_PINECONE_KEY"
-export INDEX_HOST="test1-3gxkkbr.svc.aped-4627-b74a.pinecone.io"   # your host or just host w/o https
+export INDEX_HOST=""   # your host or just host w/o https
 export MONGO_URI="mongodb+srv://<user>:<pw>@cluster.mongodb.net/?retryWrites=true&w=majority"
 export SECRET_KEY="change_in_prod"   # for existing craft routes
 ```
