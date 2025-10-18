@@ -6,24 +6,21 @@ import jwt
 from datetime import datetime, timedelta
 import asyncio
 from typing import Optional, Any
-import sys
 from pathlib import Path
+
 from app.models import OnboardingData
 from app.mongodb import ensure_initialized, collection, next_sequence, close as mongo_close
 
-# New imports
+# Image + embedding imports
 from io import BytesIO
 import requests
 from PIL import Image
 from image_search.clip_embedder import ClipEmbedder
 from pinecone import Pinecone
-import time
+
+# networking helpers
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
-
-REPO_ROOT = Path(__file__).resolve().parents[3]
-IMAGE_SEARCH_PATH = REPO_ROOT / "image-search"
-sys.path.insert(0, str(IMAGE_SEARCH_PATH))
 
 router = APIRouter()
 SECRET_KEY = os.getenv("SECRET_KEY", "change_in_prod")
@@ -33,16 +30,17 @@ ALGORITHM = "HS256"
 PINECONE_API_KEY = os.environ.get("PINECONE_API_KEY")
 INDEX_HOST = os.environ.get("INDEX_HOST")  # example: test1-xxxx.pinecone.io
 
-# Single embedder instance (uses CPU/GPU as available)
-_embedder = None
+# Single embedder instance (lazy)
+_embedder: Optional[ClipEmbedder] = None
 
-
+# Browser-like headers for fetching images (helps with CDNs)
 _FETCH_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
                   "(KHTML, like Gecko) Chrome/120.0 Safari/537.36",
     "Accept": "image/*,*/*;q=0.8",
-    "Referer": "https://upload.wikimedia.org/"  # helps some CDNs; harmless otherwise
+    "Referer": "https://upload.wikimedia.org/"
 }
+
 
 async def ensure_db_ready_or_502():
     """
@@ -57,11 +55,12 @@ async def ensure_db_ready_or_502():
             mongo_close()
             await ensure_initialized()
         except Exception as e2:
-            # return a 502 so caller can surface to client
             raise HTTPException(status_code=502, detail=f"DB init error: {e}; retry failed: {e2}")
 
 
-# -------------- existing create route --------------
+# -----------------------
+# Existing create route (unchanged)
+# -----------------------
 @router.post("/create")
 async def create_craftid(data: OnboardingData):
     # ensure DB is initialized (with recovery)
@@ -77,7 +76,7 @@ async def create_craftid(data: OnboardingData):
     except asyncio.TimeoutError:
         raise HTTPException(status_code=504, detail="DB read timed out")
     except Exception as e:
-        # if this error occurs, try a recovery once (covers rare closed-loop mid-request)
+        # if this error occurs, try a recovery once
         try:
             mongo_close()
             await ensure_db_ready_or_502()
@@ -125,7 +124,7 @@ async def create_craftid(data: OnboardingData):
     try:
         await coll.insert_one(doc)
     except Exception as e:
-        # try recovery once if insert fails with event-loop closed style errors
+        # try recovery once if insert fails
         try:
             mongo_close()
             await ensure_db_ready_or_502()
@@ -166,7 +165,7 @@ async def create_craftid(data: OnboardingData):
 
 
 # -----------------------
-# Image-search helpers
+# Image-search helpers (URL-only flow)
 # -----------------------
 def _ensure_embedder():
     global _embedder
@@ -189,6 +188,7 @@ def _get_pinecone_index():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to connect to Pinecone: {e}")
 
+
 def _requests_session_with_retries(total_retries: int = 2, backoff_factor: float = 0.3):
     s = requests.Session()
     retries = Retry(
@@ -202,6 +202,7 @@ def _requests_session_with_retries(total_retries: int = 2, backoff_factor: float
     s.mount("http://", adapter)
     return s
 
+
 async def _fetch_image_from_url(url: str, timeout: int = 10) -> Image.Image:
     """
     Fetch image bytes from the given URL and return a PIL.Image (RGB).
@@ -211,21 +212,15 @@ async def _fetch_image_from_url(url: str, timeout: int = 10) -> Image.Image:
     def _fetch():
         sess = _requests_session_with_retries(total_retries=2, backoff_factor=0.5)
         try:
-            # Stream so we don't load huge files accidentally
             r = sess.get(url, headers=_FETCH_HEADERS, timeout=timeout, stream=True, allow_redirects=True)
             r.raise_for_status()
         except Exception as e:
-            # propagate a helpful message back to the async caller
             raise RuntimeError(f"HTTP fetch failed: {e}")
 
-        # check content-type
         ct = r.headers.get("content-type", "")
         if not ct or not ct.startswith("image/"):
-            # some sites don't set content-type correctly; try to still read small content but warn
-            # we bail out for commons-style 403/HTML returns
             raise RuntimeError(f"URL did not return an image (content-type={ct})")
 
-        # limit max bytes read (avoid huge images) — e.g., 15MB
         MAX_BYTES = 15 * 1024 * 1024
         data = b""
         try:
@@ -237,7 +232,6 @@ async def _fetch_image_from_url(url: str, timeout: int = 10) -> Image.Image:
         finally:
             r.close()
 
-        # convert to PIL
         from io import BytesIO
         try:
             img = Image.open(BytesIO(data)).convert("RGB")
@@ -249,21 +243,9 @@ async def _fetch_image_from_url(url: str, timeout: int = 10) -> Image.Image:
         pil_img = await asyncio.to_thread(_fetch)
         return pil_img
     except RuntimeError as re:
-        # return as 400 to the client so they can change the URL
         raise HTTPException(status_code=400, detail=f"Failed to fetch image: {re}")
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to fetch image: {e}")
-
-# async def _fetch_image_from_url(url: str, timeout: int = 10) -> Image.Image:
-#     def _fetch():
-#         r = requests.get(url, timeout=timeout)
-#         r.raise_for_status()
-#         return Image.open(BytesIO(r.content)).convert("RGB")
-#     try:
-#         img = await asyncio.to_thread(_fetch)
-#         return img
-#     except Exception as e:
-#         raise HTTPException(status_code=400, detail=f"Failed to fetch image: {e}")
 
 
 async def _embed_image(pil_img: Image.Image) -> list:
@@ -277,12 +259,13 @@ async def _embed_image(pil_img: Image.Image) -> list:
 
 async def _query_pinecone(vec: list, top_k: int = 5) -> list:
     idx = _get_pinecone_index()
-    # run query in thread
+
     def _q():
         try:
             return idx.query(vector=vec, top_k=top_k, include_metadata=True)
         except TypeError:
             return idx.query(vec, top_k=top_k, include_metadata=True)
+
     try:
         res = await asyncio.to_thread(_q)
     except Exception as e:
@@ -293,62 +276,33 @@ async def _query_pinecone(vec: list, top_k: int = 5) -> list:
 
 async def _upsert_pinecone(doc_id: str, vec: list, pine_meta: dict):
     idx = _get_pinecone_index()
+
     def _upsert():
         try:
             return idx.upsert(vectors=[(doc_id, vec, pine_meta)])
         except TypeError:
             return idx.upsert([(doc_id, vec, pine_meta)])
+
     try:
         resp = await asyncio.to_thread(_upsert)
-        return resp
+        # normalize response to plain dict
+        if isinstance(resp, dict):
+            return resp
+        upserted_count = getattr(resp, "upserted_count", None)
+        if upserted_count is not None:
+            return {"upserted_count": int(upserted_count)}
+        # fallback: try dict-like access
+        try:
+            return {"upserted_count": int(resp.get("upserted_count"))}
+        except Exception:
+            return {"info": "upserted"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Pinecone upsert failed: {e}")
 
 
 # -----------------------
-# Image-search routes
+# Image-search routes (URL-only)
 # -----------------------
-
-@router.post("/image-search/upload")
-async def image_search_upload(file: UploadFile = File(...), top_k: int = Form(5), include_meta: bool = Form(True)):
-    """
-    Upload an image file (multipart) and return top-k similar items from Pinecone + Mongo.
-    """
-    # ensure DB ready
-    await ensure_db_ready_or_502()
-    imgs_col = collection("image_index")
-
-    # read file bytes and open
-    try:
-        content = await file.read()
-        pil_img = await asyncio.to_thread(lambda b: Image.open(BytesIO(b)).convert("RGB"), content)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Invalid uploaded image: {e}")
-
-    vec = await _embed_image(pil_img)
-    matches = await _query_pinecone(vec, top_k=top_k)
-
-    results = []
-    for m in matches:
-        mid = m.get("id") if isinstance(m, dict) else getattr(m, "id", None)
-        score = m.get("score") if isinstance(m, dict) else getattr(m, "score", None)
-        meta = m.get("metadata") if isinstance(m, dict) else getattr(m, "metadata", {}) or {}
-        full_meta = None
-        if include_meta and mid:
-            try:
-                full_meta = await asyncio.wait_for(imgs_col.find_one({"_id": mid}), timeout=4)
-            except Exception:
-                # ignore mongo read errors for optional metadata
-                full_meta = None
-        results.append({
-            "id": mid,
-            "score": float(score) if score is not None else None,
-            "source": meta.get("source", ""),
-            "brief": meta.get("brief", ""),
-            "full_meta": full_meta
-        })
-    return {"count": len(results), "results": results}
-
 
 @router.post("/image-search/url")
 async def image_search_url(image_url: str = Form(...), top_k: int = Form(5), include_meta: bool = Form(True)):
@@ -417,7 +371,7 @@ async def image_search_upsert(
     # determine doc id
     doc_id = craft_id or f"url::{hash(image_url)}"
 
-        # prepare pinecone metadata and upsert
+    # prepare pinecone metadata and upsert
     pine_meta = {
         "source": image_url,
         "brief": meta_obj.get("title", "") if isinstance(meta_obj, dict) else ""
@@ -435,15 +389,12 @@ async def image_search_upsert(
         await imgs_col.replace_one({"_id": doc_id}, doc, upsert=True)
     except Exception as e:
         # non-fatal: return response but alert user that mongo write failed
-        # Convert upsert_resp into a safe dict if possible
         safe_pine = {}
         try:
-            # if it's a dict-like
             if isinstance(upsert_resp, dict):
                 safe_pine = upsert_resp
             else:
-                # try to extract common attributes
-                upserted_count = getattr(upsert_resp, "upserted_count", None) or upsert_resp.get("upserted_count", None) if hasattr(upsert_resp, "get") else None
+                upserted_count = getattr(upsert_resp, "upserted_count", None) or (upsert_resp.get("upserted_count") if hasattr(upsert_resp, "get") else None)
                 safe_pine = {"upserted_count": int(upserted_count) if upserted_count is not None else None}
         except Exception:
             safe_pine = {"info": "pinecone response (unserializable)"}
@@ -460,9 +411,7 @@ async def image_search_upsert(
             return {"upserted_count": None}
         if isinstance(r, dict):
             return r
-        # common attribute
         upserted_count = getattr(r, "upserted_count", None)
-        # some SDKs return {'upserted_count': N}
         if upserted_count is None and hasattr(r, "get"):
             try:
                 upserted_count = r.get("upserted_count")
