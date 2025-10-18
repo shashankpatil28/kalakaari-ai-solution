@@ -3,7 +3,7 @@ import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
-import { AuthService } from '../../services/auth.service'; // <-- updated path
+import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-login',
@@ -24,6 +24,20 @@ export class LoginComponent {
     this.loading = true;
     try {
       await this.auth.login(this.email, this.password);
+      this.message = '✅ Login successful! Redirecting...';
+      setTimeout(() => this.router.navigate(['/home']), 1200);
+    } catch (e: any) {
+      this.message = '❌ Login failed: ' + (e.message || e.code);
+    } finally {
+      this.loading = false;
+    }
+  }
+
+  async onGoogleLogin() {
+    this.message = '';
+    this.loading = true;
+    try {
+      await this.auth.loginWithGoogle();
       this.message = '✅ Login successful! Redirecting...';
       setTimeout(() => this.router.navigate(['/home']), 1200);
     } catch (e: any) {

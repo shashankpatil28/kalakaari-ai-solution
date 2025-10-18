@@ -1,0 +1,41 @@
+<div class="flex items-center justify-center min-h-screen px-4">
+  <div *ngIf="pendingUser" class="w-full max-w-md bg-surface border border-secondary shadow-lg rounded-2xl p-8">
+    <div class="text-center mb-8">
+      <h2 class="text-3xl font-bold text-accent mb-2">Complete Your Profile</h2>
+      <p class="text-text-muted">Welcome, {{ pendingUser.name }}! Please select your account type.</p>
+    </div>
+
+    <div class="mb-6">
+      <label class="block text-text-muted text-sm font-medium mb-2">I am joining as an:</label>
+      <div class="flex gap-4">
+          <label class="flex-1 flex items-center justify-center p-3 bg-background border border-secondary rounded-lg cursor-pointer has-[:checked]:border-primary has-[:checked]:ring-1 has-[:checked]:ring-primary">
+              <input type="radio" name="userType" value="artisan" [(ngModel)]="userType" class="sr-only">
+              <span class="text-sm font-medium text-accent">Artisan</span>
+          </label>
+          <label class="flex-1 flex items-center justify-center p-3 bg-background border border-secondary rounded-lg cursor-pointer has-[:checked]:border-primary has-[:checked]:ring-1 has-[:checked]:ring-primary">
+              <input type="radio" name="userType" value="customer" [(ngModel)]="userType" class="sr-only">
+              <span class="text-sm font-medium text-accent">Customer / Art Lover</span>
+          </label>
+      </div>
+    </div>
+
+    <p *ngIf="message" class="text-center text-sm mb-4 text-red-400">
+      {{ message }}
+    </p>
+
+    <button
+      (click)="onSubmit()"
+      [disabled]="loading"
+      class="w-full bg-primary text-background font-bold py-3 rounded-lg hover:bg-primary-light transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+    >
+      {{ loading ? 'Saving...' : 'Complete Signup' }}
+    </button>
+
+  </div>
+   <div *ngIf="!pendingUser && !message" class="text-center text-text-muted">
+      Loading user data...
+   </div>
+   <div *ngIf="!pendingUser && message" class="text-center text-red-400">
+       {{ message }} <a routerLink="/login" class="underline">Go to Login</a>
+   </div>
+</div>

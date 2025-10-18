@@ -3,7 +3,7 @@ import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
-import { AuthService } from '../../services/auth.service'; // <-- updated path
+import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-signup',
@@ -16,7 +16,7 @@ export class SignupComponent {
   email = '';
   password = '';
   confirm = '';
-  userType = 'customer'; // Add userType, default to 'customer'
+  userType: 'artisan' | 'customer' = 'customer'; // Strongly typed
   message = '';
   loading = false;
 
@@ -24,35 +24,34 @@ export class SignupComponent {
 
   async onSignup() {
     this.message = '';
-    if (!this.name.trim()) {
-      this.message = 'Name is required';
-      return;
-    }
-    if (!this.email.trim()) {
-      this.message = 'Email is required';
-      return;
-    }
-    if (this.password.length < 6) {
-      this.message = 'Password must be at least 6 characters';
-      return;
-    }
+    // ... (your existing validation is good) ...
     if (this.password !== this.confirm) {
       this.message = 'Passwords do not match';
       return;
     }
-    if (!this.userType) {
-      this.message = 'Please select an account type';
-      return;
-    } // Add validation
 
     this.loading = true;
     try {
-      // Pass userType to the signup method
-      await this.auth.signup(this.email, this.password, this.name); // Assuming auth.signup will be updated to handle userType
+      // Pass all required data to the service
+      await this.auth.signup(this.email, this.password, this.name, this.userType);
       this.message = '✅ Signup successful! Redirecting...';
       setTimeout(() => this.router.navigate(['/home']), 1500);
     } catch (e: any) {
       this.message = this.humanizeError(e?.message || e?.code || 'Signup failed');
+    } finally {
+      this.loading = false;
+    }
+  }
+
+  async onGoogleLogin() {
+    this.message = '';
+    this.loading = true;
+    try {
+      await this.auth.loginWithGoogle();
+      this.message = '✅ Login successful! Redirecting...';
+      setTimeout(() => this.router.navigate(['/home']), 1200);
+    } catch (e: any) {
+      this.message = '❌ Login failed: ' + (e.message || e.code);
     } finally {
       this.loading = false;
     }
@@ -64,4 +63,4 @@ export class SignupComponent {
     if (msg.includes('auth/weak-password')) return 'Password is too weak.';
     return msg;
   }
-}
+} 

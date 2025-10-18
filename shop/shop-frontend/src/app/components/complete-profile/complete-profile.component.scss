@@ -1,0 +1,8 @@
+// shop/shop-frontend/src/app/components/home/home.component.scss
+
+:host {
+  display: block;
+  /* The background color is inherited from the global 'body' style in styles.scss.
+    No need to set it here again, which keeps the component encapsulated.
+  */
+}
