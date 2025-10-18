@@ -1,59 +1,4 @@
 
-
-## Table of contents
-
-1. Project layout (important paths)
-2. Requirements & quick environment setup
-3. Install project & image-search package (editable)
-4. Index local dataset (optional)
-5. Start the FastAPI server (routes)
-6. Test endpoints (curl examples)
-7. What the routes do (behaviour & payloads)
-8. Common troubleshooting / FAQs
-9. Security & production notes
-10. PR checklist for reviewers
-
----
-
-## 1) Project layout (important paths)
-
-Assumes repo root is:
-
-```
-/Users/<you>/.../kalakaari-ai-solution/master-ip
-```
-
-Key folders and files used in this feature:
-
-```
-/master-ip
-  /image-search                # image embedding + indexer code (clip_embedder.py, index_local_dataset.py, test_query.py, setup.py)
-/server
-  /app
-    /routes
-      craft_controllers.py    # contains create + image-search endpoints
-    main.py                   # FastAPI app, includes routes
-  .venv                       # project virtualenv (per developer)
-```
-
-If your local folder names differ, adapt the instructions below accordingly.
-
----
-
-## 2) Requirements & quick environment setup
-
-### System
-
-* macOS / Linux / Windows WSL
-* Python 3.10+ (we used 3.13 in dev; 3.10–3.13 should be fine)
-* Git, curl
-* Internet access for pip and Pinecone/Mongo
-
-### Services required
-
-* Pinecone account & an existing index (we use `test1` in examples)
-* MongoDB (Atlas or local). Example used: Mongo Atlas connection string.
-
 ### Create & activate virtualenv (recommended)
 
 Run from repo root (`master-ip`):
@@ -138,31 +83,6 @@ If this fails, ensure you are using the same `python`/`.venv` where the server w
 
 ---
 
-## 4) Index local dataset (optional — only if you want to re-index)
-
-If you have local images under `image_search/data/...` and want to (re)index:
-
-Set env vars (replace values with yours):
-
-```bash
-# inside .venv
-export PINECONE_API_KEY="YOUR_PINECONE_KEY"
-export INDEX_HOST="your-index-host-from-console"   # e.g. test1-xxxx.pinecone.io
-export MONGO_URI="mongodb://localhost:27017"       # or your Atlas URI
-export DATA_ROOT="./image_search/data"             # default path used by indexer
-```
-
-Run the indexer:
-
-```bash
-cd image_search
-python index_local_dataset.py
-```
-
-Expected output: it will print folders found and how many images were indexed; `Final Pinecone upsert response: {'upserted_count': N}` and `Mongo count: N`.
-
----
-
 ## 5) Start the FastAPI server (image-search routes)
 
 Set env vars (do **not** commit secrets):
@@ -190,19 +110,13 @@ Server URL: `http://127.0.0.1:8000`
 
 > Replace file paths, image URLs, and craft IDs as needed. Use direct raw image URLs (not HTML page links).
 
-### 6.1 `/image-search/upload` — upload local file
 
-```bash
-curl -X POST "http://127.0.0.1:8000/image-search/upload" \
-  -F "file=@/absolute/path/to/image1.jpg" \
-  -F "top_k=5"
-```
 
-### 6.2 `/image-search/url` — query by remote image URL
+### 6.1 `/image-search/url` — query by remote image URL
 
 ```bash
 curl -X POST "http://127.0.0.1:8000/image-search/url" \
-  -F "image_url=https://upload.wikimedia.org/wikipedia/commons/8/8d/Madhubani_Art_example.jpg" \
+  -F "image_url=<image-url>" \
   -F "top_k=5"
 ```
 
@@ -243,10 +157,6 @@ mongosh "<your-atlas-uri>" --eval 'db.getSiblingDB("master_ip").image_index.find
 
 ## 7) What each route does (short)
 
-* `POST /image-search/upload`
-
-  * Accepts multipart `file` (image), `top_k` (int), `include_meta` (bool).
-  * Embeds image, queries Pinecone, returns top matches and optional full metadata from Mongo.
 
 * `POST /image-search/url`
 
@@ -301,37 +211,6 @@ mongosh "<your-atlas-uri>" --eval 'db.getSiblingDB("master_ip").image_index.find
 
 ---
 
-## 9) Security & production notes
-
-* **Do not commit secrets** (`PINECONE_API_KEY`, `MONGO_URI`). Use environment secrets manager for deployments.
-* For production:
-
-  * Run embedding workers on GPU nodes (Cloud Run with GPUs or Vertex AI) for speed.
-  * Use authenticated endpoints, rate limits and ACLs for `/upsert`.
-  * Validate/scan uploaded images for malicious content and size-limit (e.g., 15MB).
-  * Use Pinecone namespaces or tenants for multi-tenant isolation.
-  * Use signed URLs / temporary credentials for private S3 images.
-
----
-
-## 10) PR checklist for reviewers
-
-When you open a PR describing this feature, include this checklist in the PR description so reviewers can test easily:
-
-* [ ] `pip install -r server/requirements.txt` ran successfully in `.venv`.
-* [ ] `python -m pip install -e ./image_search` installed in the same venv as server.
-* [ ] Set env vars locally (no secrets in PR): `PINECONE_API_KEY`, `INDEX_HOST`, `MONGO_URI`, `SECRET_KEY`.
-* [ ] Index local images (optional): `python image_search/index_local_dataset.py` — confirms Pinecone & Mongo writes.
-* [ ] Start server: `cd server && uvicorn app.main:app --reload --port 8000`.
-* [ ] Run curl tests:
-
-  * `/image-search/upload` (local file)
-  * `/image-search/url` (valid raw image URL)
-  * `/image-search/upsert` (register Ajrak or sample)
-* [ ] Confirm Mongo has expected docs: `db.master_ip.image_index.findOne()`
-* [ ] Confirm Pinecone index shows vector count (via Pinecone console or `pc.describe_index()`).
-
----
 
 ## Appendix — Useful commands (copy-paste)
 
@@ -363,7 +242,7 @@ uvicorn app.main:app --reload --port 8000
 # test endpoints — example upsert
 curl -X POST "http://127.0.0.1:8000/image-search/upsert" \
   -F "craft_id=CRAFT_000022" \
-  -F "image_url=https://upload.wikimedia.org/wikipedia/commons/f/f3/Ajrak_print_from_Sindh.jpg" \
+  -F "image_url=<image-url" \
   -F 'metadata={"title":"Ajrak","artisan":"Sindhi Craftsmen"}'
 ```
 
