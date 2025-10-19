@@ -4,7 +4,6 @@ from fastapi import FastAPI, HTTPException
 from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routes.craftid import router as craftid_router
 from app.routes.products import router as products_router
 
 # Import helper from your mongodb.py
@@ -27,10 +26,9 @@ app.add_middleware(
 
 app.include_router(products_router)
 
-
 @app.get("/")
 async def root():
-    return {"message": "Prototype Master-IP backend is running!"}
+    return {"message": "Prototype Shop backend is running!"}
 
 
 @app.post("/init-db")

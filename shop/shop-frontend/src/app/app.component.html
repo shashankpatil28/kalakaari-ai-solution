@@ -1,14 +1,38 @@
-<!-- shop/shop-frontend/src/app/app.component.html -->
-<nav class="bg-secondary shadow-md sticky top-0 z-50">
-  <div class="container flex justify-between items-center py-4">
-    <h1 class="text-2xl font-bold text-blue-600">Shop</h1>
-    <ul class="flex gap-6 text-gray-700 font-medium">
-      <li><a routerLink="/login" class="hover:text-blue-600 transition">Login</a></li>
-      <li><a routerLink="/signup" class="hover:text-blue-600 transition">Signup</a></li>
-    </ul>
-  </div>
-</nav>
+<nav class="bg-surface sticky top-0 z-50 border-b border-secondary">
+      <div class="container flex items-center justify-between py-4">
+        <h1 class="text-2xl font-bold text-accent">Kalaakari Shop</h1>
+        <div class="flex items-center gap-4">
+          <!-- Logged Out State -->
+          <ng-container *ngIf="!auth.currentUser()">
+            <a
+              routerLink="/login"
+              class="font-medium text-text-muted hover:text-accent hover:border-accent transition-colors duration-300 px-4 py-2 border border-secondary rounded-md"
+              >Login</a
+            >
+            <a
+              routerLink="/signup"
+              class="font-medium text-text-muted hover:text-accent hover:border-accent transition-colors duration-300 px-4 py-2 border border-secondary rounded-md"
+              >Sign Up</a
+            >
+          </ng-container>
 
-<main class="container mt-10">
-  <router-outlet></router-outlet>
-</main>
+          <!-- Logged In State -->
+          <ng-container *ngIf="auth.currentUser() as user">
+            <span class="font-medium text-text-muted px-4 py-2 border border-secondary rounded-md">
+              Hello, {{ user.displayName || 'User' }}  
+            </span>
+            <button
+              (click)="auth.logout()"
+              class="font-medium text-text-muted hover:text-accent hover:border-accent transition-colors duration-300 px-4 py-2 border border-secondary rounded-md"
+            >
+              Logout
+            </button>
+          </ng-container>
+        </div>
+      </div>
+    </nav>
+    <main>
+      <div [@routerAnimation]="getRouteAnimationData()">
+        <router-outlet></router-outlet>
+      </div>
+    </main>

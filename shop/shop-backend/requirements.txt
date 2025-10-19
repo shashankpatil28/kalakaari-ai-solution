@@ -1,0 +1,9 @@
+# shop-backend/requirements.txt
+
+fastapi>=0.100.0,<0.112.0 # Use a specific recent range if possible
+uvicorn[standard]>=0.20.0,<0.30.0
+motor>=3.0.0,<4.0.0
+python-dotenv>=1.0.0,<2.0.0
+pydantic>=2.0.0,<3.0.0 # Assuming FastAPI version uses Pydantic v2
+pyjwt>=2.0.0,<3.0.0
+dnspython>=2.0.0,<3.0.0 # Often needed for mongodb+srv URIs

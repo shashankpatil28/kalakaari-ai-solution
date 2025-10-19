@@ -1,0 +1,57 @@
+# shop/cloudrun.yaml
+
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: shop-service # Choose a name for your Cloud Run service
+  namespace: '978458840399' # Your Google Cloud Project Number
+  annotations:
+    run.googleapis.com/launch-stage: BETA # Required for multi-container
+spec:
+  template:
+    metadata:
+      annotations:
+        # Optional: Define container startup order if needed
+        # run.googleapis.com/container-dependencies: "{backend: [frontend]}"
+    spec:
+      containers:
+        # --- Frontend Container (Ingress) ---
+        - name: frontend # Name for the frontend container
+          image: gcr.io/kalakaari-ai/shop-frontend:latest # REPLACE with your image path
+          ports:
+            # THIS is the single container port exposed for external traffic
+            - name: http1
+              containerPort: 80 # Nginx listens on $PORT (usually 8080)
+          resources:
+            limits:
+              cpu: 1000m
+              memory: 512Mi
+
+        # --- Backend Container (Sidecar) ---
+        - name: backend # Name for the backend container
+          image: gcr.io/kalakaari-ai/shop-backend:latest # REPLACE with your image path
+          # --- REMOVE THE PORTS SECTION FROM THE SIDECAR ---
+          # ports:
+          #   - containerPort: 8000 # REMOVED - This port is only for internal communication
+          env:
+            - name: PORT # Uvicorn uses this, Nginx proxies to it
+              value: "8000"
+            - name: MONGO_URI
+              # WARNING: Insecure for production! Replace with your actual URI.
+              value: "mongodb+srv://shashank28:shash2811@shashank28.ytqocxe.mongodb.net/?retryWrites=true&w=majority&appName=shashank28"
+            - name: DB_NAME
+              value: "kalaakari_shop_db" # Or your desired DB name
+            - name: SECRET_KEY
+              # WARNING: Insecure for production! Replace with your actual secret key.
+              value: "shashankpatil2811"
+          resources:
+            limits:
+              cpu: 1000m
+              memory: 512Mi
+          # Optional: Add startup/readiness probes if needed
+          # startupProbe:
+          #   httpGet:
+          #     path: / # Your backend root path
+          #     port: 8000 # Probe the internal port
+          #   initialDelaySeconds: 5
+          #   # ... other probe settings ...

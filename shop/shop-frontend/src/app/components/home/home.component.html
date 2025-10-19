@@ -9,83 +9,77 @@
     </p>
   </header>
 
-  <div *ngIf="isLoading" class="text-center text-text-muted text-lg font-medium">
-    <p>Loading products from the shop...</p>
+  <div *ngIf="isLoading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+    <app-skeleton-card *ngFor="let i of skeletonItems"></app-skeleton-card>
   </div>
 
-  <div *ngIf="!isLoading && products.length === 0" class="text-center text-text-muted text-lg py-16">
+  <div *ngIf="errorMessage && !isLoading" class="text-center text-red-400 text-lg font-medium py-16">
+     <p>{{ errorMessage }}</p>
+  </div>
+
+  <div *ngIf="!isLoading && products.length === 0 && !errorMessage" class="text-center text-text-muted text-lg py-16">
     <p>No artisan products found yet. The gallery is currently empty.</p>
   </div>
 
   <div
-    *ngIf="products.length > 0"
+    *ngIf="!isLoading && products.length > 0"
     class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8"
   >
     <div
       *ngFor="let product of products"
-      class="bg-surface rounded-xl overflow-hidden border border-secondary transition-all duration-300 group hover:border-primary hover:shadow-2xl hover:shadow-primary/10"
+      class="bg-surface rounded-xl overflow-hidden border border-secondary transition-all duration-300 group relative hover:border-primary hover:shadow-lg hover:shadow-primary/10"
     >
-      <div class="relative w-full h-72 overflow-hidden">
+        <div class="relative w-full h-72 overflow-hidden">
         <img
-          [src]="'data:image/png;base64,' + product.art_info.photo"
+          [src]="product.art_info.photo.startsWith('data:image') ? product.art_info.photo : 'data:image/png;base64,' + product.art_info.photo"
           alt="{{ product.art_info.name }}"
           loading="lazy"
           class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
           (error)="onImgError($event)"
         />
         <div
-          class="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"
+          class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-80"
+          aria-hidden="true"
         ></div>
+        <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
+             <div class="flex space-x-3">
+                 <a
+                  [href]="product.verification.verification_url"
+                  target="_blank"
+                  class="flex-1 text-center py-2 px-4 rounded-lg text-background bg-primary hover:bg-primary-light transition-colors duration-300 font-semibold text-sm"
+                 >
+                   Verify Provenance
+                 </a>
+                 <button
+                  class="flex-1 text-center py-2 px-4 rounded-lg text-accent bg-secondary hover:bg-secondary-light transition-colors duration-300 font-semibold text-sm"
+                 >
+                   View Certificate
+                 </button>
+             </div>
+        </div>
       </div>
 
-      <div class="p-6 flex flex-col">
-        <h3 class="text-xl font-bold text-accent mb-2 truncate">
+      <div class="p-6">
+        <h3 class="text-xl font-bold text-accent mb-2 truncate" title="{{ product.art_info.name }}">
           {{ product.art_info.name }}
         </h3>
-        <p class="text-base text-text-muted mb-4 h-20 overflow-hidden flex-grow">
-          {{ product.art_info.description }}
+        <p class="text-sm text-text-muted mb-4 h-16 overflow-hidden line-clamp-3"> {{ product.art_info.description }}
         </p>
 
-        <div class="flex items-center text-text-muted mb-6">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="h-5 w-5 mr-2 text-primary-light"
-            viewBox="0 0 20 20"
-            fill="currentColor"
-          >
-            <path
-              fill-rule="evenodd"
-              d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
-              clip-rule="evenodd"
-            />
+        <div class="flex items-center text-sm text-text-muted mb-4">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5 text-primary-light" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" />
           </svg>
-          <span class="font-semibold text-accent">{{ product.artisan_info.name }}</span>
-          <span class="mx-2">·</span>
-          <span>{{ product.artisan_info.location }}</span>
+          <span class="font-medium text-accent mr-1">{{ product.artisan_info.name }}</span>
+          <span class="text-xs">in {{ product.artisan_info.location }}</span>
         </div>
 
-        <div class="border-t border-secondary/50 pt-4">
-          <div class="flex items-center justify-between text-sm text-text-muted mb-3">
+        <div class="border-t border-secondary/30 pt-3 mt-auto"> <div class="flex items-center justify-between text-xs text-text-muted">
             <span>CraftID:</span>
-            <span class="font-mono text-accent">{{ product.verification.public_id }}</span>
-          </div>
-
-          <div class="flex space-x-3 mt-4">
-            <a
-              [href]="product.verification.verification_url"
-              target="_blank"
-              class="flex-1 text-center py-2 px-4 rounded-lg text-background bg-primary hover:bg-primary-light transition-colors duration-300 font-semibold text-sm"
-            >
-              Verify Provenance
-            </a>
-            <button
-              class="flex-1 text-center py-2 px-4 rounded-lg text-accent bg-secondary hover:bg-secondary-light transition-colors duration-300 font-semibold text-sm"
-            >
-              View Certificate
-            </button>
+            <span class="font-mono text-accent/80">{{ product.verification.public_id }}</span>
           </div>
         </div>
       </div>
     </div>
-  </div>
+    </div>
 </div>

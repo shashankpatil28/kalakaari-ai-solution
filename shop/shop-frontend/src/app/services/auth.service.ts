@@ -13,7 +13,8 @@ import {
   signInWithPopup,
   setPersistence,
   browserLocalPersistence,
-  authState
+  authState,
+  UserCredential // Import UserCredential
 } from '@angular/fire/auth';
 import {
   doc,
@@ -25,7 +26,7 @@ import { Observable, of, tap } from 'rxjs';
 import { environment } from '../../environments/environments';
 
 export interface AppUser extends User {
-  userType?: 'artisan' | 'customer';
+  userType?: 'artisan' | 'customer' | undefined; // Explicitly allow undefined
 }
 
 @Injectable({ providedIn: 'root' })
@@ -39,31 +40,33 @@ export class AuthService {
   public readonly authState$: Observable<User | null> = authState(this.auth);
 
   constructor() {
-    // Try setting persistence immediately. If it fails, log and continue.
     setPersistence(this.auth, browserLocalPersistence)
       .then(() => {
         console.log('Persistence set to local.');
       })
       .catch((error) => {
-        // Log the specific persistence error, but don't block app initialization
         console.error('Error setting persistence:', error);
       })
       .finally(() => {
-        // Always setup the listener regardless of persistence success/failure
         this.setupAuthStateListener();
       });
   }
 
   private setupAuthStateListener() {
     onAuthStateChanged(this.auth, (user) => {
-      // Run the ENTIRE callback logic within NgZone
       this.ngZone.run(() => {
         if (user) {
           console.log('(Listener) Auth State Changed: User logged in:', user.uid);
-          this.fetchUserProfile(user); // Fetch profile when auth state confirms user
+          // Only fetch profile if currentUser signal doesn't match or lacks userType
+          const currentSignalUser = this.currentUser();
+          if (!currentSignalUser || currentSignalUser.uid !== user.uid || currentSignalUser.userType === undefined) {
+             this.fetchUserProfile(user);
+          } else {
+             console.log('(Listener) Signal already up-to-date for user:', user.uid);
+          }
         } else {
           console.log('(Listener) Auth State Changed: User logged out.');
-          if (this.currentUser() !== null) { // Only update if state actually changes
+          if (this.currentUser() !== null) {
             this.currentUser.set(null);
           }
         }
@@ -71,160 +74,160 @@ export class AuthService {
     });
   }
 
-  private fetchUserProfile(user: User) {
+  // Modified to return AppUser or null if profile fetch fails/missing
+  private async fetchUserProfile(user: User): Promise<AppUser | null> {
     const userDocRef = doc(this.firestore, `users/${user.uid}`);
-    // Use try-catch within the promise handler for better error isolation
-    getDoc(userDocRef).then(docSnap => {
-        // Run the promise resolution logic within NgZone
-        this.ngZone.run(() => {
-            if (docSnap.exists()) {
-                const profile = docSnap.data();
-                // Ensure profile includes expected fields before setting
-                const appUser: AppUser = {
-                   ...user,
-                   // Safely access userType, default to undefined if missing
-                   userType: profile?.['userType'] as ('artisan' | 'customer' | undefined)
-                };
-                this.currentUser.set(appUser);
-                console.log('(Listener) User profile fetched:', this.currentUser());
-            } else {
-                 // Profile doesn't exist yet, set current user without userType
-                this.currentUser.set({ ...user, userType: undefined });
-                console.warn('(Listener) User profile document not found for UID:', user.uid);
-            }
-        });
-    }).catch(error => {
-        // Run error handling within NgZone
-        this.ngZone.run(() => {
-            console.error("(Listener) Error fetching user profile:", error);
-            // Set user state even if profile fetch fails, explicitly mark userType as unknown
-            this.currentUser.set({ ...user, userType: undefined });
-        });
-    });
+    try {
+      const docSnap = await getDoc(userDocRef);
+      let appUser: AppUser;
+      if (docSnap.exists()) {
+        const profile = docSnap.data();
+        appUser = {
+          ...user,
+          userType: profile?.['userType'] as ('artisan' | 'customer' | undefined)
+        };
+        console.log('(Fetcher) User profile fetched:', appUser);
+      } else {
+        appUser = { ...user, userType: undefined }; // Profile doesn't exist yet
+        console.warn('(Fetcher) User profile document not found for UID:', user.uid);
+      }
+      // Update signal within zone
+      this.ngZone.run(() => this.currentUser.set(appUser));
+      return appUser; // Return the fetched/constructed user object
+    } catch (error) {
+        console.error("(Fetcher) Error fetching user profile:", error);
+        const errorUser: AppUser = { ...user, userType: undefined };
+        // Update signal even on error
+        this.ngZone.run(() => this.currentUser.set(errorUser));
+        return errorUser; // Return user object even if fetch failed, userType will be undefined
+    }
   }
 
+
   isLoggedIn(): boolean {
-    // Base isLoggedIn on the signal's current state
     return !!this.currentUser();
   }
 
-  async signup(email: string, password: string, displayName: string, userType: 'artisan' | 'customer') {
+  // --- Core Auth Methods ---
+
+  // Modified to return AppUser
+  async signup(email: string, password: string, displayName: string, userType: 'artisan' | 'customer'): Promise<AppUser> {
     const cred = await createUserWithEmailAndPassword(this.auth, email, password);
-    // Ensure profile is created FIRST
+    // Profile must be created FIRST
     await this.createUserProfile(cred.user.uid, displayName, email, userType);
-    // Then update Auth profile
     await updateProfile(cred.user, { displayName });
 
-    // Manually construct the full AppUser object for the signal
     const newUser: AppUser = {
-        ...cred.user, // Spread the base User object properties
-        displayName: displayName, // Ensure display name is included
-        userType: userType // Add the userType
+        ...cred.user,
+        displayName: displayName,
+        userType: userType
     };
 
-    // Update the signal within the zone AFTER profile is confirmed created
     this.ngZone.run(() => {
         this.currentUser.set(newUser);
         console.log("Manual signal set after signup:", this.currentUser());
     });
-    return cred;
+    return newUser; // Return the newly created AppUser
   }
 
-  async login(email: string, password: string) {
-    // Login simply signs the user in. The authState listener handles profile fetching.
-    return await signInWithEmailAndPassword(this.auth, email, password);
+  // Modified to return AppUser or null
+  async login(email: string, password: string): Promise<AppUser | null> {
+    const cred = await signInWithEmailAndPassword(this.auth, email, password);
+    // After successful sign-in, immediately fetch the profile
+    return await this.fetchUserProfile(cred.user);
   }
 
-  async loginWithGoogle() {
+  // Modified to return AppUser or null (if redirecting)
+  async loginWithGoogle(): Promise<AppUser | null> {
     const provider = new GoogleAuthProvider();
     try {
       const cred = await signInWithPopup(this.auth, provider);
       const user = cred.user;
       const userDocRef = doc(this.firestore, `users/${user.uid}`);
-
-      // Check profile existence immediately after successful popup
       const docSnap = await getDoc(userDocRef);
 
       if (!docSnap.exists()) {
         console.log('New Google user detected. Storing pending info and redirecting.');
-        // Store minimal necessary info
         localStorage.setItem('pendingUserProfile', JSON.stringify({
           uid: user.uid,
           name: user.displayName || 'User',
           email: user.email || ''
         }));
-        // Navigate within the zone AFTER storing data
         this.ngZone.run(() => this.router.navigate(['/complete-profile']));
-        return null; // Explicitly return null to indicate redirection
+        return null; // Indicate profile completion needed
       } else {
         console.log('Existing Google user logged in.');
-        // Profile exists. Let the authState listener handle fetching,
-        // but update signal manually here for immediate feedback if needed.
+        // Profile exists. Fetch it to get userType and update signal
         const profile = docSnap.data();
         const existingUser: AppUser = {
            ...user,
            userType: profile?.['userType'] as ('artisan' | 'customer' | undefined)
         };
-        // Update signal within zone for consistency
         this.ngZone.run(() => {
             this.currentUser.set(existingUser);
             console.log("Manual signal set for existing Google user:", this.currentUser());
         });
-        return cred; // Return credential to indicate success
+        return existingUser; // Return the AppUser
       }
     } catch (error: any) {
       console.error("Google Sign-In Error:", error);
-      // Optional: Check for specific cancellation errors
       if (error.code === 'auth/popup-closed-by-user') {
         console.log("Google Sign-In popup closed by user.");
       }
-      // Don't navigate here, let the component handle UI feedback
-      throw error; // Re-throw for component or global error handler
+      throw error;
     }
   }
 
   async logout() {
     await signOut(this.auth);
-    // Navigate within the zone AFTER sign out completes
     this.ngZone.run(() => this.router.navigate(['/login']));
   }
 
-  async createUserProfile(uid: string, name: string | null, email: string | null, userType: 'artisan' | 'customer', merge = false) {
-    // Ensure essential details have default values if null
+  // Modified to return the updated AppUser or null on error
+  async createUserProfile(uid: string, name: string | null, email: string | null, userType: 'artisan' | 'customer', merge = false): Promise<AppUser | null> {
     const profileName = name || 'User';
     const profileEmail = email || 'No Email';
-
     const userDocRef = doc(this.firestore, `users/${uid}`);
     console.log(`Attempting to create/update profile for UID: ${uid} with type: ${userType}`);
-    try {
-      await setDoc(userDocRef, {
+    const profileData = {
         uid,
         name: profileName,
         email: profileEmail,
         userType,
-        createdAt: new Date().toISOString(), // Use ISO string for consistency
-      }, { merge }); // Use merge option passed in
+        createdAt: new Date().toISOString(),
+    };
+
+    try {
+      await setDoc(userDocRef, profileData , { merge });
       console.log(`Profile successfully created/updated for UID: ${uid}`);
 
-      // Update signal AFTER successful Firestore write
       const authUser = this.auth.currentUser;
+      let updatedUser: AppUser | null = null;
       if (authUser && authUser.uid === uid) {
-        this.ngZone.run(() => {
-          const updatedUser: AppUser = {
+          updatedUser = {
             ...authUser,
-            // Use potentially updated name/email from profile data
             displayName: profileName,
             email: profileEmail,
             userType: userType
           };
-          this.currentUser.set(updatedUser);
-          console.log("Signal updated after profile creation/update:", this.currentUser());
-        });
+          // Update signal immediately
+          this.ngZone.run(() => {
+            this.currentUser.set(updatedUser);
+            console.log("Signal updated after profile creation/update:", this.currentUser());
+          });
       }
+      return updatedUser ?? { ...profileData, // Construct a basic user object if authUser isn't current somehow
+            // Add required User fields if needed, though they might be missing
+            // This case is less likely but provides a fallback return
+            providerId: 'firebase', // Example placeholder
+            delete: async () => {}, // Example placeholder
+            getIdToken: async () => '', // Example placeholder
+            // ... add other required User fields/methods with placeholders
+          } as unknown as AppUser;
     } catch (error) {
-      // Log the specific error from Firestore
       console.error(`Firestore Error: Failed to create/update profile for UID: ${uid}`, error);
-      throw error; // Propagate the error
+      // Don't update signal on error, return null to indicate failure
+      return null;
     }
   }
 }
