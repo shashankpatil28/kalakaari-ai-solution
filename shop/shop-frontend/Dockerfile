@@ -1,31 +1,18 @@
-# shop/shop-frontend/Dockerfile
 # -------- Stage 1: Build Angular app --------
 FROM node:20-alpine AS build
-
-# Set working directory
 WORKDIR /app
-
-# Install deps first (cached if package.json/package-lock.json unchanged)
 COPY package*.json ./
 RUN npm ci
-
-# Copy the rest of the source code
 COPY . .
-
-# Build Angular app for production
+# Ensure this output path matches your angular.json configuration
 RUN npm run build -- --configuration production --output-path=dist/kalakaari-shop/browser
 
 # -------- Stage 2: Serve with Nginx --------
 FROM nginx:alpine
-
-# Copy built Angular app to Nginx HTML dir
+# Ensure this source path matches the build output path above
 COPY --from=build /app/dist/kalakaari-shop/browser /usr/share/nginx/html
-
-# Add custom nginx config (for Angular SPA routing)
+# Ensure nginx.conf is in the same directory as this Dockerfile
 COPY nginx.conf /etc/nginx/conf.d/default.conf
-
-# Expose port
-EXPOSE 80
-
-# Start Nginx
+# Expose the port Nginx will listen on (matching cloudrun.yaml and nginx.conf)
+EXPOSE 8080
 CMD ["nginx", "-g", "daemon off;"]
