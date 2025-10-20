@@ -15,7 +15,15 @@ from app.mongodb import ensure_initialized, collection, next_sequence, close as 
 from io import BytesIO
 import requests
 from PIL import Image
-from image_search.clip_embedder import ClipEmbedder
+import sys
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parents[3]  # go up from /server/app/routes/ to /master-ip
+IMAGE_SEARCH_PATH = REPO_ROOT / "image_search"
+if str(IMAGE_SEARCH_PATH) not in sys.path:
+    sys.path.insert(0, str(IMAGE_SEARCH_PATH))
+
+from clip_embedder import ClipEmbedder
 from pinecone import Pinecone
 
 # networking helpers

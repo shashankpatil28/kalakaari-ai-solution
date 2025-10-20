@@ -20,3 +20,4 @@ tqdm
 torch
 transformers
 uvicorn[standard]
+sentence-transformers

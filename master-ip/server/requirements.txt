@@ -49,3 +49,4 @@ pillow
 pymongo
 pinecone
 tqdm
+sentence-transformers

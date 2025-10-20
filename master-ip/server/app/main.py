@@ -5,6 +5,8 @@ from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.routes import craft_controllers
+from app.routes.metadata_search import router as metadata_router
+
 # from app.routes.products import router as products_router
 
 # Import helper from your mongodb.py
@@ -27,6 +29,7 @@ app.add_middleware(
 
 # include routers
 app.include_router(craft_controllers.router)
+app.include_router(metadata_router)
 # app.include_router(products_router)
 
 
