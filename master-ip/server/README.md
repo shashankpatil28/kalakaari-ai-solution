@@ -1,198 +1,196 @@
-# Kalakaari AI - Master-IP Service (Backend)
+# Master-IP Backend Service
 
-This service is the backend server component for the Master-IP solution, designed to handle the creation and management of unique digital identifiers (`CraftID`) for artisanal products. It's built with FastAPI and uses MongoDB for data storage.
+> (A brief summary of the project will be added here.)
 
-## 📝 Project Summary
-
-(This section is intentionally left blank for you to fill in with the project's vision, goals, and high-level description.)
+This document provides all the necessary instructions to set up, run, and deploy the Master-IP backend service. The service is built with FastAPI and provides endpoints for CraftID management and advanced vector-based search for images and metadata.
 
 ---
 
-## 📁 Folder Structure
+## Table of Contents
 
-The server is organized as follows to separate concerns like routes, models, and database logic from the main application entry point.
+1. [Local Development Setup](#local-development-setup)
 
-```
-master-ip/
-└── server/
-    ├── app/
-    │   ├── routes/
-    │   │   └── craftid.py
-    │   ├── main.py
-    │   ├── mongodb.py
-    │   └── models.py
-    ├── requirements.txt
-    ├── .env
-    ├── .gitignore
-    └── README.md
-```
+   * [Prerequisites](#prerequisites)
+   * [Installation](#installation)
+   * [Environment Variables](#environment-variables)
+   * [Running the Application](#running-the-application)
+2. [Deployment to Google Cloud Run](#deployment-to-google-cloud-run)
+
+   * [Deployment Prerequisites](#deployment-prerequisites)
+   * [Step-by-Step Deployment Guide](#step-by-step-deployment-guide)
 
 ---
 
-## 🚀 Getting Started
+## Local Development Setup
 
-You can set up the project for development either by running it directly on your local machine or by using Docker for a more isolated environment.
+Follow these instructions to get the application running on your local machine for development and testing.
 
 ### Prerequisites
 
-* Python 3.8+ and Pip
-* [Docker](https://www.docker.com/get-started) and [Docker Compose](https://docs.docker.com/compose/install/) (for the Docker-based setup)
-* A MongoDB instance (you can run one easily with Docker)
+Ensure you have the following software installed:
 
-### 1. Local Development Setup
+* **Python 3.10+**
+* **Pip** (Python Package Installer)
+* **Git**
 
-**Step 1: Clone the Repository**
-```bash
-git clone <your-repository-url>
-cd kalakaari-ai-solution/master-ip/server
+### Installation
+
+1. **Clone the repository:**
+
+   ```bash
+   git clone <your-repository-url>
+   cd master-ip/server
+   ```
+
+2. **Create and activate a virtual environment:**
+
+   * **macOS / Linux:**
+
+     ```bash
+     python3 -m venv venv
+     source venv/bin/activate
+     ```
+   * **Windows (PowerShell):**
+
+     ```bash
+     python -m venv venv
+     .\venv\Scripts\Activate.ps1
+     ```
+
+3. **Install the required dependencies:**
+
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+### Environment Variables
+
+The application requires several environment variables to connect to external services.
+
+1. Create a file named `.env` in the `master-ip/server/` directory.
+2. Copy the content below into the `.env` file and replace the placeholder values with your actual credentials.
+
+```env
+# .env
+
+# --- MongoDB ---
+# Your database connection string.
+# Get from: [https://www.mongodb.com/cloud/atlas](https://www.mongodb.com/cloud/atlas)
+MONGO_URI="mongodb+srv://<user>:<password>@<cluster-url>/..."
+DB_NAME="masterip_db"
+
+# --- JWT ---
+# A strong, random secret key for signing tokens.
+# Generate one with: python -c 'import secrets; print(secrets.token_hex(32))'
+SECRET_KEY="your_super_strong_random_secret_key"
+
+# --- Pinecone ---
+# API Key and environment for your Pinecone project.
+# Get from: [https://app.pinecone.io/](https://app.pinecone.io/)
+PINECONE_API_KEY="your_pinecone_api_key"
+PINECONE_ENV="your_pinecone_environment_region" # e.g., "gcp-starter"
+
+# Pinecone Index Hosts (Specific to your indexes)
+# Find this on the Pinecone dashboard for each index.
+INDEX_HOST="your_image_index_host.svc.pinecone.io" # For image search
+PINECONE_TEXT_INDEX="text" # The name of your text search index
 ```
 
-**Step 2: Create a Virtual Environment**
-It's highly recommended to use a virtual environment to manage project dependencies.
-```bash
-# For macOS/Linux
-python3 -m venv venv
-source venv/bin/activate
+### Running the Application
 
-# For Windows
-python -m venv venv
-.\venv\Scripts\activate
-```
-
-**Step 3: Install Dependencies**
-```bash
-pip install -r requirements.txt
-```
-
-**Step 4: Set Up Environment Variables**
-Create a `.env` file in the `server/` directory by copying the example below. This file stores configuration details and secrets.
-
-***File: `.env`***
-```ini
-# MongoDB Connection Details
-MONGO_URI="mongodb://localhost:27017/"
-DB_NAME="kalakaari_db"
-
-# JWT Secret Key for signing private keys
-SECRET_KEY="a_very_strong_and_secret_key_for_development"
-```
-
-**Step 5: Run a MongoDB Instance**
-The easiest way to run a local MongoDB for development is with Docker:
-```bash
-docker run -d --name mongo-dev -p 27017:27017 mongo:latest
-```
-
-**Step 6: Run the FastAPI Application**
-Use `uvicorn` to run the server. The `--reload` flag will automatically restart the server when you make changes to the code.
-```bash
-uvicorn app.main:app --reload
-```
-The server will now be running at `http://127.0.0.1:8000`.
-
-### 2. Docker-based Setup
-
-This method uses Docker Compose to build and run the FastAPI application and the MongoDB database in isolated containers.
-
-**Step 1: Create the `Dockerfile`**
-Create a file named `Dockerfile` (without any extension) in the `server/` directory with the content provided in the section below.
-
-**Step 2: Create the `docker-compose.yml` file**
-Create a file named `docker-compose.yml` in the `server/` directory.
-
-```yaml
-version: '3.8'
-
-services:
-  api:
-    build: .
-    ports:
-      - "8000:8000"
-    volumes:
-      - .:/app  # Mounts the current directory into the container for hot-reloading
-    env_file:
-      - ./.env
-    environment:
-      # Override MONGO_URI to use the Docker network service name 'mongo'
-      - MONGO_URI=mongodb://mongo:27017/
-    depends_on:
-      - mongo
-
-  mongo:
-    image: mongo:latest
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongo-data:/data/db
-
-volumes:
-  mongo-data:
-```
-
-**Step 3: Run with Docker Compose**
-Make sure you have created the `.env` file as described in the local setup guide. Then, run the following command from the `server/` directory:
+Once the dependencies are installed and the `.env` file is configured, run the development server:
 
 ```bash
-docker-compose up --build
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
-This command will build the FastAPI image, pull the MongoDB image, and start both containers. The API will be available at `http://localhost:8000`.
+
+`--reload` enables auto-reloading, so the server will restart after you change a file.
+
+The API will be available at [http://localhost:8000](http://localhost:8000). You can access the auto-generated documentation at [http://localhost:8000/docs](http://localhost:8000/docs).
 
 ---
 
-## 🌐 API Endpoints
+## Deployment to Google Cloud Run
 
-### Health Check
+This guide details how to deploy the service as a containerized application on Google Cloud Run.
 
-* **`GET /`**
-    * **Description**: A simple endpoint to check if the service is running.
-    * **Success Response (200)**:
-        ```json
-        { "message": "Prototype Master-IP backend is running!" }
-        ```
+### Deployment Prerequisites
 
-### Admin
+* **Google Cloud SDK (gcloud CLI)** installed and configured. ([Install Guide](https://cloud.google.com/sdk/docs/install))
+* **Docker** installed and running on your local machine. ([Install Guide](https://docs.docker.com/get-docker/))
+* You must be authenticated with GCP:
 
-* **`POST /init-db`**
-    * **Description**: An administrative endpoint to initialize the database. This primarily ensures the `counters` collection for the atomic sequencer is created. It's safe to call multiple times.
-    * **Success Response (200)**:
-        ```json
-        { "status": "ok", "detail": "DB initialized or already ready." }
-        ```
+  ```bash
+  gcloud auth login
+  ```
 
-### CraftID Creation
+### Step-by-Step Deployment Guide
 
-* **`POST /create`**
-    * **Description**: The primary endpoint for onboarding a new art piece and artisan, which generates a unique CraftID.
-    * **Request Body**:
-        ```json
-        {
-          "artisan": {
-            "name": "Ramesh Kumar",
-            "location": "Jaipur, Rajasthan",
-            "contact_number": "9876543210",
-            "email": "ramesh.k@example.com",
-            "aadhaar_number": "123456789012"
-          },
-          "art": {
-            "name": "Blue Pottery Vase - Royal Peacock",
-            "description": "A handcrafted vase made with traditional blue pottery techniques, featuring a royal peacock design.",
-            "photo": "data:image/jpeg;base64,..."
-          }
-        }
-        ```
-    * **Success Response (200)**: A detailed JSON object containing the newly created IDs and metadata.
-    * **Error Responses**:
-        * `409 Conflict`: If an art piece with a similar name already exists.
-        * `502 Bad Gateway`: If the server cannot connect to the database.
+All commands should be run from the `master-ip/server/` directory.
 
----
+#### 1. Configure gcloud CLI: Set your project and default region.
 
-## 🛠️ Architectural Notes
+```bash
+gcloud config set project kalakaari-ai
+gcloud config set compute/region asia-southeast1
+```
 
-* **Asynchronous Processing**: The application uses **FastAPI** and **Motor** (an async driver for MongoDB), allowing it to handle I/O-bound operations (like database queries) efficiently without blocking.
-* **Database Connection Management**: The `mongodb.py` module is designed to be resilient. The `ensure_initialized()` function lazily creates a database connection and includes retry logic to handle potential connection drops, which is particularly useful in serverless or containerized environments.
-* **ID & Key Generation**:
-    * **`public_id`**: A human-readable, sequential ID (`CID-00001`) generated using an atomic counter in MongoDB to prevent race conditions.
-    * **`private_key`**: A **JWT (JSON Web Token)** that encodes the `public_id` and an expiration date. This acts as a portable and verifiable "private key" for the owner.
-    * **`public_hash`**: A **SHA-256** hash of the core art details (name, description, photo). This creates a unique fingerprint of the art's data at the time of creation, which can be used to verify data integrity.
-* **Configuration**: All sensitive data and environment-specific settings (database URI, secret keys) are managed through the `.env` file, which should not be committed to version control.
+#### 2. Enable Required APIs: This allows Cloud Run and Artifact Registry to function.
+
+```bash
+gcloud services enable artifactregistry.googleapis.com run.googleapis.com
+```
+
+#### 3. Create an Artifact Registry Repository: This private repository will store your Docker images.
+
+```bash
+gcloud artifacts repositories create master-ip-containers \
+    --repository-format=docker \
+    --location=asia-southeast1 \
+    --description="Repository for master-ip-service images"
+```
+
+#### 4. Authenticate Docker with GCP: This command configures your local Docker client to push to your new repository.
+
+```bash
+gcloud auth configure-docker asia-southeast1-docker.pkg.dev
+```
+
+#### 5. Build, Tag, and Push the Docker Image: This sequence builds your image, tags it correctly for your repository, and pushes it.
+
+```bash
+# Define the full image name
+export IMAGE_NAME="asia-southeast1-docker.pkg.dev/kalakaari-ai/master-ip-containers/backend-latest"
+
+# Build the image
+docker build -t $IMAGE_NAME .
+
+# Push the image
+docker push $IMAGE_NAME
+```
+
+#### 6. Deploy to Cloud Run: This command deploys your container image as a serverless service.
+
+⚠️ **Important: Set Environment Variables**
+You must provide all secrets from your `.env` file directly to the Cloud Run service during deployment.
+
+```bash
+gcloud run deploy master-ip-service \
+    --image=$IMAGE_NAME \
+    --platform=managed \
+    --region=asia-southeast1 \
+    --port=8000 \
+    --allow-unauthenticated \
+    --set-env-vars=^::^ \
+MONGO_URI="YOUR_MONGO_URI_HERE":: \
+DB_NAME="masterip_db":: \
+SECRET_KEY="YOUR_JWT_SECRET_HERE":: \
+PINECONE_API_KEY="YOUR_PINECONE_API_KEY":: \
+INDEX_HOST="YOUR_PINECONE_IMAGE_INDEX_HOST":: \
+PINECONE_ENV="YOUR_PINECONE_ENV_REGION":: \
+PINECONE_TEXT_INDEX="text"
+```
+
+`--allow-unauthenticated` makes the service publicly accessible. Remove this flag if you intend to secure it with IAM.
+
+After the command completes, **gcloud** will provide you with a **Service URL**. This is the public endpoint for your deployed API.

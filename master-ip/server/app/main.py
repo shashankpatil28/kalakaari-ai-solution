@@ -1,37 +1,31 @@
 # app/main.py
-import os
 from fastapi import FastAPI, HTTPException
-from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routes import craft_controllers
-from app.routes.metadata_search import router as metadata_router
+# Import new routers
+from app.routes import craft, search
 
-# from app.routes.products import router as products_router
-
-# Import helper from your mongodb.py
-from app.mongodb import ensure_initialized, close as mongo_close
-
-load_dotenv()
+# Import DB helpers for admin endpoint
+from app.db.mongodb import ensure_initialized, close as mongo_close
 
 app = FastAPI(title="Master-IP Prototype Service", version="0.1.0")
 
 # CORS: allow your frontend (and add others here as needed)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "*"
-    ],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# include routers
-app.include_router(craft_controllers.router)
-app.include_router(metadata_router)
-# app.include_router(products_router)
+# --- Include Routers ---
+# Note: We don't need to load_dotenv() here, 
+# it's handled by app/constants.py when it's first imported.
+app.include_router(craft.router)
+app.include_router(search.router)
 
+# --- Root and Admin Endpoints ---
 
 @app.get("/")
 async def root():
@@ -46,6 +40,7 @@ async def init_db():
     """
     try:
         await ensure_initialized()
+    }
     except Exception as e:
         # try reset and retry
         try:

@@ -1,38 +1,24 @@
-# app/routes/craftid.py
-from fastapi import APIRouter, HTTPException
-import os
+# app/controllers/craft_controller.py
+from fastapi import HTTPException
 import hashlib
 import jwt
 from datetime import datetime, timedelta
 import asyncio
-    
-from app.models import OnboardingData
-from app.mongodb import ensure_initialized, collection, next_sequence, close as mongo_close
 
-router = APIRouter()
-SECRET_KEY = os.getenv("SECRET_KEY", "change_in_prod")
-ALGORITHM = "HS256"
+# Import schemas
+from app.schemas.craft import OnboardingData
 
+# Import DB helpers
+from app.db.mongodb import collection, next_sequence, close as mongo_close
+from app.utils.db_utils import ensure_db_ready_or_502
 
-async def ensure_db_ready_or_502():
-    """
-    Helper: ensure db is ready. If first attempt fails, reset client and retry.
-    Raises HTTPException(status_code=502) on failure.
-    """
-    try:
-        await ensure_initialized()
-    except Exception as e:
-        # attempt to recover by closing client and retrying
-        try:
-            mongo_close()
-            await ensure_initialized()
-        except Exception as e2:
-            # return a 502 so caller can surface to client
-            raise HTTPException(status_code=502, detail=f"DB init error: {e}; retry failed: {e2}")
+# Import config
+from app.constants import SECRET_KEY, ALGORITHM
 
-
-@router.post("/create")
 async def create_craftid(data: OnboardingData):
+    """
+    Controller logic for creating a new CraftID.
+    """
     # ensure DB is initialized (with recovery)
     await ensure_db_ready_or_502()
 
@@ -46,7 +32,7 @@ async def create_craftid(data: OnboardingData):
     except asyncio.TimeoutError:
         raise HTTPException(status_code=504, detail="DB read timed out")
     except Exception as e:
-        # if this error occurs, try a recovery once (covers rare closed-loop mid-request)
+        # if this error occurs, try a recovery once
         try:
             mongo_close()
             await ensure_db_ready_or_502()
@@ -94,7 +80,7 @@ async def create_craftid(data: OnboardingData):
     try:
         await coll.insert_one(doc)
     except Exception as e:
-        # try recovery once if insert fails with event-loop closed style errors
+        # try recovery once if insert fails
         try:
             mongo_close()
             await ensure_db_ready_or_502()

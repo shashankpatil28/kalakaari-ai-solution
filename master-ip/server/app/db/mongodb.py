@@ -1,13 +1,12 @@
-# app/mongodb.py
-import os
+# app/db/mongodb.py
 import asyncio
 from typing import Optional
 from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo import ReturnDocument
 from pymongo.errors import ServerSelectionTimeoutError
 
-MONGO_URI = os.getenv("MONGO_URI")
-DB_NAME = os.getenv("DB_NAME", "masterip_db")
+# Import config from constants
+from app.constants import MONGO_URI, DB_NAME
 
 # Global client/db objects (may be reused across warm invocations)
 _client: Optional[AsyncIOMotorClient] = None

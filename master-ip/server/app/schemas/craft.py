@@ -1,4 +1,4 @@
-# app/models.py
+# app/schemas/craft.py
 from pydantic import BaseModel, EmailStr
 
 class Artisan(BaseModel):

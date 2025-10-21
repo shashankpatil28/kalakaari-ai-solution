@@ -1,0 +1,22 @@
+# master-ip/server/.dockerignore
+
+# Ignore the virtual environment
+venv/
+.venv/
+
+# Ignore Python cache
+__pycache__/
+*.pyc
+
+# Ignore local environment files and sensitive data
+.env
+*.env
+.env.*
+
+# Ignore Git files
+.git
+.gitignore
+
+# Ignore IDE/editor config
+.vscode/
+.idea/
