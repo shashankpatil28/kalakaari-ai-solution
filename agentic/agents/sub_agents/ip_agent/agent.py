@@ -3,6 +3,8 @@ import os
 from google.adk.agents import Agent
 from .prompt import IP_PROMPT
 from dotenv import load_dotenv
+# Near the other imports
+from ..shop_agent.agent import shop_agent
 
 import os
 import json
@@ -11,41 +13,48 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-
-def call_add_product(onboarding_data: str) -> dict:
+# Add this new tool function
+def call_verify_uniqueness(onboarding_data: str) -> dict:
     """
-    Tool for shop_agent:
-    Submits onboarding data to the shop backend (/add-product).
+    Tool for ip_agent:
+    Submits onboarding data to the backend service for uniqueness verification.
 
     Args:
         onboarding_data (str): JSON string containing onboarding details.
 
     Returns:
-        dict: Structured response.
+        dict: Structured response indicating if unique or duplicate,
+              and a message if duplicate.
+              Example success: {"status": "unique"}
+              Example duplicate: {"status": "duplicate", "message": "Similar artwork found..."}
     """
     try:
-        payload = json.loads(onboarding_data)
+        data_payload = json.loads(onboarding_data)
+        
+        # --- IMPORTANT: Use a NEW environment variable for the verify endpoint ---
+        url = os.getenv("VERIFY_ENDPOINT", "https://basic-backend-fastapi.vercel.app/verify") # Example URL
+        logger.info(f"[ip_agent] Sending data to verification endpoint: {url}")
+
+        response = requests.post(url, json=data_payload, timeout=30)
+        response.raise_for_status() # Raise error for bad status codes (4xx or 5xx)
+
+        # Assuming the verify endpoint returns JSON like {"status": "unique/duplicate", "message": "..."}
+        verification_result = response.json()
+        logger.info(f"[ip_agent] Verification result: {verification_result}")
+        return verification_result
+
     except json.JSONDecodeError as e:
-        logger.error("Invalid onboarding_data JSON: %s", e)
-        return {"status": "error", "message": "Invalid onboarding data format."}
-
-    url = os.getenv("SHOP_ENDPOINT", "https://basic-backend-fastapi.vercel.app/add-product")
-    logger.info(f"[shop_agent] Posting to {url}")
-
-    try:
-        resp = requests.post(url, json=payload, timeout=30)
-        resp.raise_for_status()
+        logger.error(f"[ip_agent] Invalid onboarding_data format for verification: {e}")
+        return {"status": "error", "message": "Invalid data format provided."}
     except requests.exceptions.RequestException as e:
-        logger.error("[shop_agent] Request to /add-product failed: %s", e)
-        return {"status": "error", "message": "Unable to connect to shop service now. Please try later.", "details": str(e)}
+        logger.error(f"[ip_agent] Verification request failed: {e}")
+        return {"status": "error", "message": "Unable to connect to verification service right now."}
+    except Exception as e:
+        logger.exception(f"[ip_agent] Unexpected error during verification: {e}")
+        return {"status": "error", "message": "An unexpected error occurred during verification."}
 
-    # success
-    try:
-        body = resp.json()
-    except Exception:
-        body = resp.text
 
-    return {"status": "success", "message": "Product listed.", "response": body}
+
 
 def call_master_ip_service(onboarding_data: str) -> dict:
     """
@@ -127,5 +136,7 @@ ip_agent = Agent(
     model=os.getenv("MODEL_NAME"),
     description="Verifies artwork uniqueness (cosine similarity) before submitting to the Master IP service.",
     instruction=IP_PROMPT,
-    tools=[call_master_ip_service, call_add_product]
+    tools=[call_verify_uniqueness, call_master_ip_service],
+    sub_agents=[shop_agent]
+
 )
