@@ -6,7 +6,7 @@ from pymongo import ReturnDocument
 from pymongo.errors import ServerSelectionTimeoutError
 
 # Import config from constants
-from app.constants import MONGO_URI, DB_NAME
+from app.constant import MONGO_URI, DB_NAME
 
 # Global client/db objects (may be reused across warm invocations)
 _client: Optional[AsyncIOMotorClient] = None

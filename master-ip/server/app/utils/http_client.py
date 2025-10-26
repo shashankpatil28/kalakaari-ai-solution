@@ -8,7 +8,7 @@ from io import BytesIO
 import asyncio
 
 # Import config from constants
-from app.constants import FETCH_HEADERS
+from app.constant import FETCH_HEADERS
 
 def _requests_session_with_retries(total_retries: int = 2, backoff_factor: float = 0.3):
     s = requests.Session()

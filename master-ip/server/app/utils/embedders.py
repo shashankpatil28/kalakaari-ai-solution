@@ -6,7 +6,7 @@ import numpy as np
 from sentence_transformers import SentenceTransformer
 
 # Import config from constants
-from app.constants import CLIP_MODEL_NAME, TEXT_MODEL_NAME
+from app.constant import CLIP_MODEL_NAME, TEXT_MODEL_NAME
 
 # --- CLIP Image Embedder ---
 

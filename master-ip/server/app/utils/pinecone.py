@@ -1,55 +1,54 @@
-# app/utils/pinecone.py
 from pinecone import Pinecone
 from fastapi import HTTPException
 import asyncio
 
 # Import config from constants
-from app.constants import PINECONE_API_KEY, INDEX_HOST
+from app.constant import (
+    PINECONE_API_KEY, 
+    INDEX_HOST,
+    PINECONE_ENV,
+    PINECONE_TEXT_INDEX
+)
 
-def _get_pinecone_index():
+def _get_image_index():
     """
-    Return a Pinecone Index client connected to INDEX_HOST.
+    Return a Pinecone Index client connected to the IMAGE index (INDEX_HOST).
     Raises HTTPException(500) if env not configured or connection fails.
     """
     if not PINECONE_API_KEY or not INDEX_HOST:
-        raise HTTPException(status_code=500, detail="Pinecone not configured (set PINECONE_API_KEY and INDEX_HOST)")
+        raise HTTPException(status_code=500, detail="Pinecone (Image) not configured (set PINECONE_API_KEY and INDEX_HOST)")
     try:
         pc = Pinecone(api_key=PINECONE_API_KEY)
         idx = pc.Index(host=INDEX_HOST)
         return idx
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to connect to Pinecone: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to connect to Pinecone (Image): {e}")
 
 
-async def _query_pinecone(vec: list, top_k: int = 5) -> list:
-    idx = _get_pinecone_index()
+async def _query_image_index(vec: list, top_k: int = 5) -> list:
+    """Async wrapper for querying the IMAGE index."""
+    idx = _get_image_index()
 
     def _q():
-        try:
-            # New SDK syntax
-            return idx.query(vector=vec, top_k=top_k, include_metadata=True)
-        except TypeError:
-            # Old SDK syntax
-            return idx.query(vec, top_k=top_k, include_metadata=True)
+        # Use new SDK syntax
+        return idx.query(vector=vec, top_k=top_k, include_metadata=True)
 
     try:
         res = await asyncio.to_thread(_q)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Pinecone query failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Pinecone (Image) query failed: {e}")
+    
     matches = res.get("matches") or getattr(res, "matches", []) or []
     return matches
 
 
-async def _upsert_pinecone(doc_id: str, vec: list, pine_meta: dict):
-    idx = _get_pinecone_index()
+async def _upsert_image_index(doc_id: str, vec: list, pine_meta: dict) -> dict:
+    """Async wrapper for upserting to the IMAGE index."""
+    idx = _get_image_index()
 
     def _upsert():
-        try:
-            # New SDK syntax
-            return idx.upsert(vectors=[(doc_id, vec, pine_meta)])
-        except TypeError:
-            # Old SDK syntax
-            return idx.upsert([(doc_id, vec, pine_meta)])
+        # Use new SDK syntax
+        return idx.upsert(vectors=[(doc_id, vec, pine_meta)])
 
     try:
         resp = await asyncio.to_thread(_upsert)
@@ -59,30 +58,38 @@ async def _upsert_pinecone(doc_id: str, vec: list, pine_meta: dict):
         upserted_count = getattr(resp, "upserted_count", None)
         if upserted_count is not None:
             return {"upserted_count": int(upserted_count)}
-        # fallback: try dict-like access
-        try:
-            return {"upserted_count": int(resp.get("upserted_count"))}
-        except Exception:
-            return {"info": "upserted"}
+        return {"info": "upserted"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Pinecone upsert failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Pinecone (Image) upsert failed: {e}")
 
 
-def _normalize_pinecone_resp(r):
+def _get_text_index():
     """
-    Success: normalize pinecone response into a simple dict
+    Return a Pinecone Index client connected to the TEXT index (PINECONE_TEXT_INDEX).
+    Raises HTTPException(500) if env not configured or connection fails.
     """
-    if r is None:
-        return {"upserted_count": None}
-    if isinstance(r, dict):
-        return r
-    upserted_count = getattr(r, "upserted_count", None)
-    if upserted_count is None and hasattr(r, "get"):
-        try:
-            upserted_count = r.get("upserted_count")
-        except Exception:
-            upserted_count = None
+    if not PINECONE_API_KEY or not PINECONE_ENV or not PINECONE_TEXT_INDEX:
+        raise HTTPException(status_code=500, detail="Pinecone (Text) not configured (set PINECONE_API_KEY, PINECONE_ENV, and PINECONE_TEXT_INDEX)")
     try:
-        return {"upserted_count": int(upserted_count) if upserted_count is not None else None}
-    except Exception:
-        return {"info": "pinecone_response_unserializable"}
+        pc = Pinecone(api_key=PINECONE_API_KEY)
+        idx = pc.Index(name=PINECONE_TEXT_INDEX)
+        return idx
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to connect to Pinecone (Text): {e}")
+
+
+async def _query_text_index(vector: list, top_k: int = 5) -> list:
+    """Async wrapper for querying the TEXT index."""
+    idx = _get_text_index()
+
+    def _q():
+        # This function now correctly accepts 'vector' and passes it on
+        return idx.query(vector=vector, top_k=top_k, include_metadata=True)
+
+    try:
+        res = await asyncio.to_thread(_q)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Pinecone (Text) query failed: {e}")
+
+    matches = res.get("matches") or getattr(res, "matches", []) or []
+    return matches

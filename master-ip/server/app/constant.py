@@ -1,4 +1,3 @@
-# app/constants.py
 import os
 from dotenv import load_dotenv
 
@@ -13,8 +12,8 @@ MONGO_URI = os.getenv("MONGO_URI")
 DB_NAME = os.getenv("DB_NAME", "masterip_db")
 
 # --- Pinecone (Image Search) ---
-PINECONE_API_KEY = os.environ.get("PINECONE_API_KEY")
-INDEX_HOST = os.environ.get("INDEX_HOST")  # example: test1-xxxx.pinecone.io
+PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
+INDEX_HOST = os.getenv("INDEX_HOST")  # example: test1-xxxx.pinecone.io
 
 # --- Pinecone (Text Search) ---
 PINECONE_ENV = os.getenv("PINECONE_ENV") # e.g., "gcp-starter" or "us-west1-gcp"

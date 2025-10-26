@@ -1,4 +1,3 @@
-# app/controllers/craft_controller.py
 from fastapi import HTTPException
 import hashlib
 import jwt
@@ -9,17 +8,18 @@ import asyncio
 from app.schemas.craft import OnboardingData
 
 # Import DB helpers
-from app.db.mongodb import collection, next_sequence, close as mongo_close
+from app.db.mongodb import collection, next_sequence
 from app.utils.db_utils import ensure_db_ready_or_502
 
 # Import config
-from app.constants import SECRET_KEY, ALGORITHM
+from app.constant import SECRET_KEY, ALGORITHM
 
 async def create_craftid(data: OnboardingData):
     """
     Controller logic for creating a new CraftID.
     """
-    # ensure DB is initialized (with recovery)
+    # ensure DB is initialized (with recovery).
+    # This single call handles connection logic.
     await ensure_db_ready_or_502()
 
     coll = collection("craftids")
@@ -28,18 +28,14 @@ async def create_craftid(data: OnboardingData):
 
     # check uniqueness
     try:
-        existing = await asyncio.wait_for(coll.find_one({"art_name_norm": art_name_norm}), timeout=4)
+        existing = await asyncio.wait_for(
+            coll.find_one({"art_name_norm": art_name_norm}), 
+            timeout=4
+        )
     except asyncio.TimeoutError:
         raise HTTPException(status_code=504, detail="DB read timed out")
     except Exception as e:
-        # if this error occurs, try a recovery once
-        try:
-            mongo_close()
-            await ensure_db_ready_or_502()
-            coll = collection("craftids")
-            existing = await asyncio.wait_for(coll.find_one({"art_name_norm": art_name_norm}), timeout=4)
-        except Exception as e2:
-            raise HTTPException(status_code=500, detail=f"DB read error: {e}; recovery error: {e2}")
+        raise HTTPException(status_code=500, detail=f"DB read error: {e}")
 
     if existing:
         raise HTTPException(
@@ -50,14 +46,10 @@ async def create_craftid(data: OnboardingData):
     # allocate atomic sequence
     try:
         seq = await asyncio.wait_for(next_sequence("craftid_seq"), timeout=4)
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=504, detail="Failed to allocate public id (timeout)")
     except Exception as e:
-        # try recovery once
-        try:
-            mongo_close()
-            await ensure_db_ready_or_502()
-            seq = await asyncio.wait_for(next_sequence("craftid_seq"), timeout=4)
-        except Exception as e2:
-            raise HTTPException(status_code=502, detail=f"Failed to allocate public id: {e}; recovery: {e2}")
+        raise HTTPException(status_code=502, detail=f"Failed to allocate public id: {e}")
 
     public_id = f"CID-{seq:05d}"
 
@@ -78,16 +70,11 @@ async def create_craftid(data: OnboardingData):
     }
 
     try:
-        await coll.insert_one(doc)
+        await asyncio.wait_for(coll.insert_one(doc), timeout=4)
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=504, detail="DB insert timed out")
     except Exception as e:
-        # try recovery once if insert fails
-        try:
-            mongo_close()
-            await ensure_db_ready_or_502()
-            coll = collection("craftids")
-            await coll.insert_one(doc)
-        except Exception as e2:
-            raise HTTPException(status_code=500, detail=f"DB insert error: {e}; recovery: {e2}")
+        raise HTTPException(status_code=500, detail=f"DB insert error: {e}")
 
     transaction_id = "tx_" + datetime.utcnow().strftime("%Y%m%d%H%M%S")
 

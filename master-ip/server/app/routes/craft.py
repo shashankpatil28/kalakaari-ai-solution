@@ -5,7 +5,7 @@ from fastapi import APIRouter
 from app.schemas.craft import OnboardingData
 
 # Import controller
-from app.controllers.craft_controller import create_craftid
+from app.controllers.craft_controllers import create_craftid
 
 router = APIRouter(
     tags=["CraftID"]

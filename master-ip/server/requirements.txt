@@ -1,53 +1,37 @@
-# master-ip/server/requirements.txt
+# --- Index Configuration ---
+# 1. Use the PyTorch CPU index as the primary source
+--index-url https://download.pytorch.org/whl/cpu
+# 2. Use the main PyPI index as an extra source for all other packages
+--extra-index-url https://pypi.org/simple
+
 # Core API and server
 fastapi
 uvicorn[standard]
 
 # Data validation and utilities
-pydantic
-python-jose[cryptography]
-python-multipart
-
-# Database (if you are using one)
-SQLAlchemy>=2.0
-psycopg2-binary
-python-dotenv
-
-# QR code generation
-qrcode[pil]
-pydantic[email]
-PyJWT
-fastapi 
-uvicorn 
-sqlalchemy 
-asyncpg 
-PyJWT 
-python-dotenv 
-motor 
-pillow
 imagehash
 numpy
-pymongo
-python-dotenv
-pinecone
-tqdm
-torch           
-transformers     
-ftfy   
-fastapi
-uvicorn
-pydantic
+pydantic[email]
+python-jose[cryptography]
+python-multipart
+PyJWT
+qrcode[pil]
 requests
 pillow
-torch
-transformers
-pinecone
+
+# Database (MongoDB)
+motor
 pymongo
-python-multipart         
-torch
-transformers
-pillow
-pymongo
+
+# Vector Search & Embeddings
+ftfy
 pinecone
-tqdm
 sentence-transformers
+tqdm
+transformers
+
+# PyTorch (will be found in the primary index-url above)
+torch
+
+# Environment
+python-dotenv

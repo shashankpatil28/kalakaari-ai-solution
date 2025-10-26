@@ -1,7 +1,7 @@
 # app/schemas/search.py
 from pydantic import BaseModel
 from typing import Optional
-from app.constants import TOP_K_DEFAULT
+from app.constant import TOP_K_DEFAULT
 
 # --- Pydantic schemas for metadata search ---
 # These are separate from craft.py as they allow optional fields for querying

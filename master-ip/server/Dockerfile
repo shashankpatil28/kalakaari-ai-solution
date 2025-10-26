@@ -1,25 +1,49 @@
-# master-ip/server/Dockerfile
+# ---- Builder Stage ----
+# Use the full "bookworm" image to ensure all build dependencies 
+# (like C++ compilers for torch) are present.
+FROM python:3.10-bookworm as builder
 
-# Use an official Python runtime as a parent image
-FROM python:3.10-slim
-
-# Set the working directory in the container
+# Set working directory
 WORKDIR /code
 
-# Copy the dependency file to the container
-COPY requirements.txt .
+# Create a virtual environment
+ENV VIRTUAL_ENV=/opt/venv
+RUN python3 -m venv $VIRTUAL_ENV
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
-# Install the dependencies
+# Copy and install requirements into the venv
+# This layer is cached as long as requirements.txt doesn't change
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy your application code from the local 'app' directory
-# into a directory named 'app' inside the container
-# The app will be at /code/app
-COPY ./app ./app
 
-# Expose the port the app runs on
+# ---- Final Stage ----
+# Use the slim image for the final, small container
+FROM python:3.10-slim
+
+# Create a non-root user for security
+RUN groupadd --gid 1001 appuser && \
+    useradd --uid 1001 --gid 1001 -m -s /bin/bash appuser
+
+# Set working directory
+WORKDIR /code
+
+# Copy the pre-built virtual environment from the builder stage
+COPY --from=builder /opt/venv /opt/venv
+
+# Copy the application code
+# CRITICAL: We copy BOTH 'app' and 'chain' folders
+COPY --chown=appuser:appuser ./app ./app
+COPY --chown=appuser:appuser ./chain ./chain
+
+# Set the non-root user
+USER appuser
+
+# Set the PATH to use the venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Expose the port
 EXPOSE 8000
 
-# Command to run the application using Uvicorn
-# We tell Uvicorn to run the 'app' object from the 'app.main' module
+# Run the application
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

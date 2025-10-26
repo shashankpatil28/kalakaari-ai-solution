@@ -1,12 +1,11 @@
-# app/main.py
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 # Import new routers
-from app.routes import craft, search
+from .routes import craft, search
 
 # Import DB helpers for admin endpoint
-from app.db.mongodb import ensure_initialized, close as mongo_close
+from .db.mongodb import ensure_initialized, close as mongo_close
 
 app = FastAPI(title="Master-IP Prototype Service", version="0.1.0")
 
@@ -40,7 +39,6 @@ async def init_db():
     """
     try:
         await ensure_initialized()
-    }
     except Exception as e:
         # try reset and retry
         try:

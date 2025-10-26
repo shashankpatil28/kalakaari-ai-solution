@@ -1,10 +1,9 @@
-# app/routes/search.py
 from fastapi import APIRouter, Request, Form, Depends
 from typing import Optional
 
 # Import schemas
 from app.schemas.search import QuerySchema
-from app.constants import TOP_K_DEFAULT
+from app.constant import TOP_K_DEFAULT
 
 # Import controllers
 from app.controllers.search_controller import (
@@ -49,8 +48,8 @@ async def image_search_upsert_route(
 # --- Metadata Search Route ---
 
 @router.post("/metadata/search")
-def metadata_search_route(payload: QuerySchema):
+async def metadata_search_route(payload: QuerySchema):
     """
     Search for items based on textual metadata.
     """
-    return metadata_search(payload)
+    return await metadata_search(payload)
