@@ -6,4 +6,5 @@ pydantic[email]
 
 requests
 SQLAlchemy
-
+cloudinary
+psycopg2-binary
