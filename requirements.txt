@@ -21,3 +21,5 @@ torch
 transformers
 uvicorn[standard]
 sentence-transformers
+cryptography>=39.0.0
+web3>=6.0.0
