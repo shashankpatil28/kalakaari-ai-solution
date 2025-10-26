@@ -17,7 +17,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "server"))
 from chain.utils import get_logger, utc_now_iso, sleep, with_retries
 from chain.queue import fetch_next_batch, mark_done, mark_failed
 from chain.web3_client import anchor_hash_on_chain
-from app.mongodb import collection, ensure_initialized
+from app.db.mongodb import collection, ensure_initialized
 logger = get_logger("chain.batcher")
 
 BATCH_LIMIT = int(os.getenv("BATCH_LIMIT", "5"))

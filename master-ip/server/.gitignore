@@ -71,3 +71,5 @@ dmypy.json
 # Local development files
 *.local
 
+# keys
+.pem

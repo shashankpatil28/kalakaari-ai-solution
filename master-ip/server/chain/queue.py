@@ -3,7 +3,7 @@ import os
 import asyncio
 from datetime import datetime, timezone
 from typing import List, Dict, Optional
-from app.mongodb import collection  # assumes your mongodb helper at app/mongodb.py
+from app.db.mongodb import collection  # assumes your mongodb helper at app/mongodb.py
 
 QUEUE_COLL = os.getenv("ANCHOR_QUEUE_COLL", "anchor_queue")
 MAX_FETCH = int(os.getenv("QUEUE_FETCH_MAX", "5"))

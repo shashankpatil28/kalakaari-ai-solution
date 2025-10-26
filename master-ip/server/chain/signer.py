@@ -8,8 +8,8 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.exceptions import InvalidSignature
 
 # DEV: For prototype, use PEM files. In production use KMS.
-SIGNER_KEY_PATH = os.getenv("SIGNER_KEY_PATH", "./chain/keys/sign_priv.pem")
-PLATFORM_PUBKEY_PATH = os.getenv("PLATFORM_PUBKEY_PATH", "./chain/keys/sign_pub.pem")
+SIGNER_KEY_PATH = os.getenv("SIGNER_KEY_PATH", "../chain/keys/sign_priv.pem")
+PLATFORM_PUBKEY_PATH = os.getenv("PLATFORM_PUBKEY_PATH", "../chain/keys/sign_pub.pem")
 
 def _load_private_key():
     pem = open(SIGNER_KEY_PATH, "rb").read()

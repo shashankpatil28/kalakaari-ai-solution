@@ -1,3 +1,4 @@
+
 # --- Index Configuration ---
 # 1. Use the PyTorch CPU index as the primary source
 --index-url https://download.pytorch.org/whl/cpu
@@ -35,3 +36,7 @@ torch
 
 # Environment
 python-dotenv
+
+# Blockchain
+cryptography>=39.0.0
+web3>=6.0.0
