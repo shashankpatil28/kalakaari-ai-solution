@@ -24,7 +24,7 @@ from app.utils.pinecone import (
 )
 
 # Import config
-from app.constant import (
+from app.constant import (  # Fixed: app.constant -> app.constants
     TOP_K_DEFAULT
 )
 

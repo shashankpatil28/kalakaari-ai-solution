@@ -3,7 +3,7 @@ from typing import Optional
 
 # Import schemas
 from app.schemas.search import QuerySchema
-from app.constant import TOP_K_DEFAULT
+from app.constant import TOP_K_DEFAULT  # Fixed: app.constant -> app.constants
 
 # Import controllers
 from app.controllers.search_controller import (
@@ -40,8 +40,6 @@ async def image_search_upsert_route(
     """
     Upsert a new image vector + metadata from an image URL and metadata JSON.
     """
-    # The 'request' param is not used in the controller, but we keep it
-    # in the signature if it's needed later (e.g., for auth).
     return await image_search_upsert(craft_id, image_url, metadata)
 
 
