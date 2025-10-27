@@ -1,18 +1,11 @@
-# master-ip/server/chain/batcher.py
 import asyncio
 import os
 import sys
-from pathlib import Path
 from datetime import datetime, timezone
-from dotenv import load_dotenv
-
-# Load environment variables FIRST
-# batcher.py is in master-ip/chain/, .env is in master-ip/server/
-env_path = Path(__file__).parent.parent / "server" / ".env"
-load_dotenv(env_path)
+# Removed Path and load_dotenv
 
 # Ensure parent dir is in path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent / "server"))
+# Removed sys.path.insert - it's not needed as WORKDIR is /code
 
 from chain.utils import get_logger, utc_now_iso, sleep, with_retries
 from chain.queue import fetch_next_batch, mark_done, mark_failed

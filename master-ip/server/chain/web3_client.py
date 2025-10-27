@@ -1,4 +1,3 @@
-# master-ip/server/chain/web3_client.py
 import os
 import time
 from web3 import Web3
@@ -12,10 +11,20 @@ except ImportError:
 from web3.exceptions import TransactionNotFound
 from typing import Tuple
 
-RPC = os.getenv("WEB3_RPC_URL", "https://rpc-amoy.polygon.technology")
-CONTRACT_ADDR = os.getenv("ANCHOR_CONTRACT_ADDRESS", "")
-ANCHORER_PRIVATE_KEY = os.getenv("ANCHORER_PRIVATE_KEY", None)  # dev only
-CHAIN_ID = int(os.getenv("CHAIN_ID", "80002"))  # Amoy default (Mumbai was 80001)
+RPC = os.getenv("WEB3_RPC_URL")
+CONTRACT_ADDR = os.getenv("ANCHOR_CONTRACT_ADDRESS")
+ANCHORER_PRIVATE_KEY = os.getenv("ANCHORER_PRIVATE_KEY")
+CHAIN_ID = int(os.getenv("CHAIN_ID", "80002"))  # Amoy default
+
+# --- Fail-fast Checks ---
+if not RPC:
+    raise EnvironmentError("WEB3_RPC_URL environment variable not set.")
+if not CONTRACT_ADDR:
+    raise EnvironmentError("ANCHOR_CONTRACT_ADDRESS environment variable not set.")
+if not ANCHORER_PRIVATE_KEY:
+    raise EnvironmentError("ANCHORER_PRIVATE_KEY environment variable not set.")
+# --- End Checks ---
+
 
 # Minimal ABI for CraftAnchor (anchor + isAnchored view)
 CRAFT_ANCHOR_ABI = [
@@ -40,8 +49,7 @@ WEB3 = Web3(Web3.HTTPProvider(RPC))
 WEB3.middleware_onion.inject(geth_poa_middleware, layer=0)
 
 def _get_contract():
-    if not CONTRACT_ADDR:
-        raise RuntimeError("ANCHOR_CONTRACT_ADDRESS not set")
+    # We know CONTRACT_ADDR is set from the check above
     return WEB3.eth.contract(address=Web3.to_checksum_address(CONTRACT_ADDR), abi=CRAFT_ANCHOR_ABI)
 
 def _to_bytes32(hex_str: str) -> bytes:
@@ -54,10 +62,7 @@ def _to_bytes32(hex_str: str) -> bytes:
 def anchor_hash_on_chain(hash_hex: str, public_id: str, wait_for_receipt: bool = True, timeout: int = 120) -> str:
     """
     Sends anchor(hash, public_id) tx and returns tx_hash hex string.
-    WAIT: uses local private key (dev only). For production use KMS signing.
     """
-    if not ANCHORER_PRIVATE_KEY:
-        raise RuntimeError("ANCHORER_PRIVATE_KEY not set in env")
     contract = _get_contract()
     acct = WEB3.eth.account.from_key(ANCHORER_PRIVATE_KEY)
     tx = contract.functions.anchor(_to_bytes32(hash_hex), public_id).build_transaction({
