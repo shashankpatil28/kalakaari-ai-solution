@@ -1,3 +1,4 @@
+# shop/shop-frontend/src/app/components/home/home.component.ts
 // shop/shop-frontend/src/app/components/home/home.component.ts
 import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';

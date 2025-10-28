@@ -1,3 +1,4 @@
+# shop/shop-frontend/src/app/services/auth.service.ts
 // shop/shop-frontend/src/app/services/auth.service.ts
 import { Injectable, signal, NgZone, inject } from '@angular/core';
 import { Router } from '@angular/router';

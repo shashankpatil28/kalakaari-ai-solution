@@ -1,3 +1,4 @@
+# shop/shop-frontend/src/app/components/utils/skeleton-card/skeleton-card.component.ts
 // shop/shop-frontend/src/app/components/utils/skeleton-card/skeleton-card.component.ts
 import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';

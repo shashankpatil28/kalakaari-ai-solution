@@ -1,3 +1,4 @@
+# shop/shop-frontend/src/environments/environments.ts
 // shop/shop-frontend/src/app/environments/environments.ts
 export const environment = {
   production: false,

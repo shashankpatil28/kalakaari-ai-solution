@@ -1,3 +1,4 @@
+# shop/shop-frontend/src/app/app.component.ts
 // shop/shop-frontend/src/app/app.component.ts
 import { Component, inject } from '@angular/core';
 import { ChildrenOutletContexts, RouterModule } from '@angular/router';

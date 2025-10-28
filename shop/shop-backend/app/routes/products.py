@@ -8,45 +8,30 @@ from datetime import datetime, timedelta
 import asyncio
 
 from app.models import OnboardingData
-from app.mongodb import ensure_initialized, collection, next_sequence, close as mongo_close
+# We only need 'collection' and 'next_sequence' now
+from app.mongodb import collection, next_sequence
 
 router = APIRouter()
 SECRET_KEY = os.getenv("SECRET_KEY", "change_in_prod")
 ALGORITHM = "HS256"
 
-
-async def ensure_db_ready_or_502():
-    try:
-        await ensure_initialized()
-    except Exception as e:
-        try:
-            mongo_close()
-            await ensure_initialized()
-        except Exception as e2:
-            raise HTTPException(status_code=502, detail=f"DB init error: {e}; retry failed: {e2}")
-
+# REMOVED the 'ensure_db_ready_or_502' helper function entirely.
 
 @router.post("/add-product")
 async def add_product(data: OnboardingData):
-    # ensure DB ready
-    await ensure_db_ready_or_502()
-
+    # REMOVED: await ensure_db_ready_or_502()
+    
     craftids = collection("craftids")
     art_name_norm = data.art.name.strip().lower()
 
     try:
-        existing = await asyncio.wait_for(craftids.find_one({"art_name_norm": art_name_norm}), timeout=4)
+        # Simplified try/except. We only care about timeouts or major errors.
+        existing = await asyncio.wait_for(craftids.find_one({"art_name_norm": art_name_norm}), timeout=5)
     except asyncio.TimeoutError:
         raise HTTPException(status_code=504, detail="DB read timed out")
     except Exception as e:
-        # recovery attempt
-        try:
-            mongo_close()
-            await ensure_db_ready_or_502()
-            craftids = collection("craftids")
-            existing = await asyncio.wait_for(craftids.find_one({"art_name_norm": art_name_norm}), timeout=4)
-        except Exception as e2:
-            raise HTTPException(status_code=500, detail=f"DB read error: {e}; recovery: {e2}")
+        # Generic error for any other DB failure
+        raise HTTPException(status_code=500, detail=f"DB read error: {e}")
 
     if existing:
         public_id = existing.get("public_id")
@@ -72,15 +57,12 @@ async def add_product(data: OnboardingData):
 
     # allocate seq
     try:
-        seq = await asyncio.wait_for(next_sequence("craftid_seq"), timeout=4)
+        # Simplified try/except
+        seq = await asyncio.wait_for(next_sequence("craftid_seq"), timeout=5)
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=504, detail="Failed to allocate public id (timeout)")
     except Exception as e:
-        # recovery attempt
-        try:
-            mongo_close()
-            await ensure_db_ready_or_502()
-            seq = await asyncio.wait_for(next_sequence("craftid_seq"), timeout=4)
-        except Exception as e2:
-            raise HTTPException(status_code=502, detail=f"Failed to allocate public id: {e}; recovery: {e2}")
+        raise HTTPException(status_code=502, detail=f"Failed to allocate public id: {e}")
 
     public_id = f"CID-{seq:05d}"
     payload = {"public_id": public_id, "exp": datetime.utcnow() + timedelta(days=365)}
@@ -97,16 +79,12 @@ async def add_product(data: OnboardingData):
     }
 
     try:
-        await craftids.insert_one(doc)
+        # Simplified try/except
+        await asyncio.wait_for(craftids.insert_one(doc), timeout=5)
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=504, detail="DB insert timed out")
     except Exception as e:
-        # recovery retry
-        try:
-            mongo_close()
-            await ensure_db_ready_or_502()
-            craftids = collection("craftids")
-            await craftids.insert_one(doc)
-        except Exception as e2:
-            raise HTTPException(status_code=500, detail=f"DB insert error: {e}; recovery: {e2}")
+        raise HTTPException(status_code=500, detail=f"DB insert error: {e}")
 
     verification_url = f"/verify/{public_id}"
     return {
@@ -119,22 +97,17 @@ async def add_product(data: OnboardingData):
 
 @router.get("/get-products")
 async def get_products():
-    await ensure_db_ready_or_502()
+    # REMOVED: await ensure_db_ready_or_502()
 
     craftids = collection("craftids")
     try:
+        # Simplified try/except
         cursor = craftids.find().sort("timestamp", -1)
-        docs = await cursor.to_list(length=200)
+        docs = await asyncio.wait_for(cursor.to_list(length=200), timeout=5)
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=504, detail="DB read timed out")
     except Exception as e:
-        # recovery attempt
-        try:
-            mongo_close()
-            await ensure_db_ready_or_502()
-            craftids = collection("craftids")
-            cursor = craftids.find().sort("timestamp", -1)
-            docs = await cursor.to_list(length=200)
-        except Exception as e2:
-            raise HTTPException(status_code=500, detail=f"DB read error: {e}; recovery: {e2}")
+        raise HTTPException(status_code=500, detail=f"DB read error: {e}")
 
     out = []
     for d in docs:

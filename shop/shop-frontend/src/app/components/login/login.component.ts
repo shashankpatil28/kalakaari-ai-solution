@@ -1,3 +1,4 @@
+# shop/shop-frontend/src/app/components/login/login.component.ts
 // shop/shop-frontend/src/app/components/login/login.component.ts
 import { Component, NgZone } from '@angular/core'; // Import NgZone
 import { CommonModule } from '@angular/common';

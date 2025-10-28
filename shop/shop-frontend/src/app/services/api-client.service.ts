@@ -1,3 +1,4 @@
+# shop/shop-frontend/src/app/services/api-client.service.ts
 // shop/shop-frontend/src/app/services/api-client.service.ts
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';

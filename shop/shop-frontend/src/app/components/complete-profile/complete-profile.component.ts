@@ -1,3 +1,4 @@
+# shop/shop-frontend/src/app/components/complete-profile/complete-profile.component.ts
 // shop/shop-frontend/src/app/components/complete-profile/complete-profile.component.ts
 import { Component, OnInit, inject, NgZone } from '@angular/core'; // Import NgZone
 import { CommonModule } from '@angular/common';
