@@ -1,15 +1,14 @@
-# shop/shop-frontend/src/environments/environments.ts
 // shop/shop-frontend/src/app/environments/environments.ts
 export const environment = {
   production: false,
   firebase: {
-    apiKey: "AIzaSyDP9Xc9hoGQJgyRyvdYB8XvrhsknevddXM",
-    authDomain: "kalakaari-ai-solution-968fd.firebaseapp.com",
-    projectId: "kalakaari-ai-solution-968fd",
-    storageBucket: "kalakaari-ai-solution-968fd.firebasestorage.app",
-    messagingSenderId: "906659444971",
-    appId: "1:906659444971:web:adfef8c8b1356e5c4da6ae",
-    measurementId: "G-TEVRF2C85G"
+    apiKey: "AIzaSyDZFJDscvuMFRrR6Z5U0MuC8X5LzDas14U",
+    authDomain: "fir-1-faa02.firebaseapp.com",
+    projectId: "fir-1-faa02",
+    storageBucket: "fir-1-faa02.firebasestorage.app",
+    messagingSenderId: "5892312581",
+    appId: "1:5892312581:web:dd1e1af7fa7c378bba966c",
+    measurementId: "G-KX6W2YH367"
   },
 };
 

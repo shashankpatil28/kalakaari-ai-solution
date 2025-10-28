@@ -1,5 +1,5 @@
-# shop/shop-frontend/src/app/components/complete-profile/complete-profile.component.html
-<div class="flex items-center justify-center min-h-screen px-4">
+<!-- shop-frontend/src/app/components/complete-profile/complete-profile.component.html -->
+<div class="flex items-center justify-center min-h-screen px-4 bg-background">
   <div *ngIf="pendingUser" class="w-full max-w-md bg-surface border border-secondary shadow-lg rounded-2xl p-8">
     <div class="text-center mb-8">
       <h2 class="text-3xl font-bold text-accent mb-2">Complete Your Profile</h2>
@@ -9,17 +9,42 @@
     <div class="mb-6">
       <label class="block text-text-muted text-sm font-medium mb-2">I am joining as an:</label>
       <div class="flex gap-4">
-          <label class="flex-1 flex items-center justify-center p-3 bg-background border border-secondary rounded-lg cursor-pointer has-[:checked]:border-primary has-[:checked]:ring-1 has-[:checked]:ring-primary">
+
+          <!-- Artisan Radio Button -->
+          <label class="flex-1 flex items-center justify-center p-3 bg-background border border-secondary rounded-lg cursor-pointer has-[:checked]:border-primary has-[:checked]:ring-1 has-[:checked]:ring-primary relative">
               <input type="radio" name="userType" value="artisan" [(ngModel)]="userType" class="sr-only">
-              <span class="text-sm font-medium text-accent">Artisan</span>
+              <span class="text-sm font-medium text-accent mr-2">Artisan</span>
+              <!-- Info Icon + Tooltip Wrapper -->
+              <div class="relative group">
+                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-text-muted group-hover:text-accent">
+                   <path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
+                 </svg>
+                 <!-- Tooltip -->
+                 <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-xs p-2 text-xs text-accent text-center rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                   Join as an artisan to protect your art with our AI agents and list it on the shop.
+                 </div>
+              </div>
           </label>
-          <label class="flex-1 flex items-center justify-center p-3 bg-background border border-secondary rounded-lg cursor-pointer has-[:checked]:border-primary has-[:checked]:ring-1 has-[:checked]:ring-primary">
-              <input type="radio" name="userType" value="customer" [(ngModel)]="userType" class="sr-only">
-              <span class="text-sm font-medium text-accent">Customer / Art Lover</span>
+
+          <!-- Art Lover Radio Button -->
+          <label class="flex-1 flex items-center justify-center p-3 bg-background border border-secondary rounded-lg cursor-pointer has-[:checked]:border-primary has-[:checked]:ring-1 has-[:checked]:ring-primary relative">
+              <input type="radio" name="userType" value="art-lover" [(ngModel)]="userType" class="sr-only">
+              <span class="text-sm font-medium text-accent mr-2">Art Lover</span>
+              <!-- Info Icon + Tooltip Wrapper -->
+              <div class="relative group">
+                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-text-muted group-hover:text-accent">
+                   <path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
+                 </svg>
+                 <!-- Tooltip -->
+                 <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-xs p-2 text-xs text-accent bg-secondary rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                   Join as an Art Lover to discover and purchase unique, IP-protected art.
+                 </div>
+              </div>
           </label>
       </div>
     </div>
 
+    <!-- ... (Rest of the form: message, button remain the same) ... -->
     <p *ngIf="message" class="text-center text-sm mb-4 text-red-400">
       {{ message }}
     </p>
@@ -33,7 +58,8 @@
     </button>
 
   </div>
-   <div *ngIf="!pendingUser && !message" class="text-center text-text-muted">
+   <!-- ... (Loading/Error states remain the same) ... -->
+    <div *ngIf="!pendingUser && !message" class="text-center text-text-muted">
       Loading user data...
    </div>
    <div *ngIf="!pendingUser && message" class="text-center text-red-400">

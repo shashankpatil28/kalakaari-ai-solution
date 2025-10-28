@@ -1,4 +1,3 @@
-# shop/shop-backend/app/models.py
 # app/models.py
 from pydantic import BaseModel, EmailStr
 

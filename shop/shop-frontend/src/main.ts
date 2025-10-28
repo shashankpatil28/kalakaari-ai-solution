@@ -1,4 +1,3 @@
-# shop/shop-frontend/src/main.ts
 // shop/shop-frontend/src/main.ts
 import { bootstrapApplication } from '@angular/platform-browser';
 import { AppComponent } from './app/app.component';

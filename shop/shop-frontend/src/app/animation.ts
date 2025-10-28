@@ -1,4 +1,3 @@
-# shop/shop-frontend/src/app/animation.ts
 // shop/shop-frontend/src/app/animations.ts
 import { animate, group, query, style, transition, trigger } from '@angular/animations';
 

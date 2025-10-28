@@ -1,39 +1,75 @@
-# shop/shop-frontend/src/app/app.component.html
-<nav class="bg-surface sticky top-0 z-50 border-b border-secondary">
-      <div class="container flex items-center justify-between py-4">
-        <h1 class="text-2xl font-bold text-accent">Kalaakari Shop</h1>
-        <div class="flex items-center gap-4">
-          <!-- Logged Out State -->
-          <ng-container *ngIf="!auth.currentUser()">
-            <a
-              routerLink="/login"
-              class="font-medium text-text-muted hover:text-accent hover:border-accent transition-colors duration-300 px-4 py-2 border border-secondary rounded-md"
-              >Login</a
-            >
-            <a
-              routerLink="/signup"
-              class="font-medium text-text-muted hover:text-accent hover:border-accent transition-colors duration-300 px-4 py-2 border border-secondary rounded-md"
-              >Sign Up</a
-            >
-          </ng-container>
+<!-- shop/shop-frontend/src/app/app.component.html -->
 
-          <!-- Logged In State -->
-          <ng-container *ngIf="auth.currentUser() as user">
-            <span class="font-medium text-text-muted px-4 py-2 border border-secondary rounded-md">
-              Hello, {{ user.displayName || 'User' }}  
-            </span>
-            <button
-              (click)="auth.logout()"
-              class="font-medium text-text-muted hover:text-accent hover:border-accent transition-colors duration-300 px-4 py-2 border border-secondary rounded-md"
-            >
-              Logout
-            </button>
-          </ng-container>
-        </div>
+<!-- Global Toast Notification (Updated to use uiState) -->
+<!-- Positioned at bottom-right, z-index 100 -->
+@if (uiState.toast(); as toast) { <!-- <-- USE uiState -->
+  <div
+    class="fixed bottom-5 right-5 z-[100] max-w-xs w-full rounded-lg shadow-2xl p-4 border"
+    [ngClass]="{
+      'bg-green-600 text-white border-green-500': toast.type === 'success',
+      'bg-red-600 text-white border-red-500': toast.type === 'error',
+      'bg-primary text-white border-primary-light': toast.type === 'info'
+    }"
+  >
+    <div class="flex items-center gap-3">
+      <!-- Success Icon -->
+      @if (toast.type === 'success') {
+        <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+      }
+      <!-- Error Icon -->
+      @if (toast.type === 'error') {
+        <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+      }
+      <!-- Info Icon -->
+      @if (toast.type === 'info') {
+        <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+      }
+      <!-- Toast Message -->
+      <p class="font-medium text-sm">{{ toast.message }}</p>
+    </div>
+  </div>
+}
+
+<!-- Your Existing Navbar (Now conditional) -->
+@if (showNavbar()) { <!-- <-- WRAPPED IN @if -->
+  <nav class="bg-surface sticky top-0 z-50 border-b border-secondary">
+    <div class="container flex items-center justify-between py-4">
+      <h1 class="text-2xl font-bold text-accent">Kalaakari Shop</h1>
+      <div class="flex items-center gap-4">
+        <!-- Logged Out State -->
+        <ng-container *ngIf="!auth.currentUser()">
+          <a
+            routerLink="/login"
+            class="font-medium text-text-muted hover:text-accent hover:border-accent transition-colors duration-300 px-4 py-2 border border-secondary rounded-md"
+            >Login</a
+          >
+          <a
+            routerLink="/signup"
+            class="font-medium text-text-muted hover:text-accent hover:border-accent transition-colors duration-300 px-4 py-2 border border-secondary rounded-md"
+            >Sign Up</a
+          >
+        </ng-container>
+
+        <!-- Logged In State -->
+        <ng-container *ngIf="auth.currentUser() as user">
+          <span class="font-medium text-text-muted px-4 py-2 border border-secondary rounded-md">
+            Hello, {{ user.displayName || 'User' }}  
+          </span>
+          <button
+            (click)="auth.logout()"
+            class="font-medium text-text-muted hover:text-accent hover:border-accent transition-colors duration-300 px-4 py-2 border border-secondary rounded-md"
+          >
+            Logout
+          </button>
+        </ng-container>
       </div>
-    </nav>
-    <main>
-      <div [@routerAnimation]="getRouteAnimationData()">
-        <router-outlet></router-outlet>
-      </div>
-    </main>
+    </div>
+  </nav>
+}
+
+<!-- Main Router Outlet (Unchanged) -->
+<main>
+  <div [@routerAnimation]="getRouteAnimationData()">
+    <router-outlet></router-outlet>
+  </div>
+</main>

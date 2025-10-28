@@ -1,5 +1,4 @@
-# shop/shop-frontend/src/app/services/auth.service.ts
-// shop/shop-frontend/src/app/services/auth.service.ts
+// shop-frontend/src/app/services/auth.service.ts
 import { Injectable, signal, NgZone, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import {
@@ -15,7 +14,7 @@ import {
   setPersistence,
   browserLocalPersistence,
   authState,
-  UserCredential // Import UserCredential
+  UserCredential
 } from '@angular/fire/auth';
 import {
   doc,
@@ -27,7 +26,7 @@ import { Observable, of, tap } from 'rxjs';
 import { environment } from '../../environments/environments';
 
 export interface AppUser extends User {
-  userType?: 'artisan' | 'customer' | undefined; // Explicitly allow undefined
+  userType?: 'artisan' | 'art-lover' | undefined; // <-- CHANGED 'customer' to 'art-lover'
 }
 
 @Injectable({ providedIn: 'root' })
@@ -41,15 +40,13 @@ export class AuthService {
   public readonly authState$: Observable<User | null> = authState(this.auth);
 
   constructor() {
+    this.setupAuthStateListener();
     setPersistence(this.auth, browserLocalPersistence)
       .then(() => {
         console.log('Persistence set to local.');
       })
       .catch((error) => {
         console.error('Error setting persistence:', error);
-      })
-      .finally(() => {
-        this.setupAuthStateListener();
       });
   }
 
@@ -58,7 +55,6 @@ export class AuthService {
       this.ngZone.run(() => {
         if (user) {
           console.log('(Listener) Auth State Changed: User logged in:', user.uid);
-          // Only fetch profile if currentUser signal doesn't match or lacks userType
           const currentSignalUser = this.currentUser();
           if (!currentSignalUser || currentSignalUser.uid !== user.uid || currentSignalUser.userType === undefined) {
              this.fetchUserProfile(user);
@@ -75,7 +71,6 @@ export class AuthService {
     });
   }
 
-  // Modified to return AppUser or null if profile fetch fails/missing
   private async fetchUserProfile(user: User): Promise<AppUser | null> {
     const userDocRef = doc(this.firestore, `users/${user.uid}`);
     try {
@@ -85,22 +80,20 @@ export class AuthService {
         const profile = docSnap.data();
         appUser = {
           ...user,
-          userType: profile?.['userType'] as ('artisan' | 'customer' | undefined)
+          userType: profile?.['userType'] as ('artisan' | 'art-lover' | undefined) // <-- CHANGED
         };
         console.log('(Fetcher) User profile fetched:', appUser);
       } else {
-        appUser = { ...user, userType: undefined }; // Profile doesn't exist yet
+        appUser = { ...user, userType: undefined };
         console.warn('(Fetcher) User profile document not found for UID:', user.uid);
       }
-      // Update signal within zone
       this.ngZone.run(() => this.currentUser.set(appUser));
-      return appUser; // Return the fetched/constructed user object
+      return appUser;
     } catch (error) {
         console.error("(Fetcher) Error fetching user profile:", error);
         const errorUser: AppUser = { ...user, userType: undefined };
-        // Update signal even on error
         this.ngZone.run(() => this.currentUser.set(errorUser));
-        return errorUser; // Return user object even if fetch failed, userType will be undefined
+        return errorUser;
     }
   }
 
@@ -111,11 +104,9 @@ export class AuthService {
 
   // --- Core Auth Methods ---
 
-  // Modified to return AppUser
-  async signup(email: string, password: string, displayName: string, userType: 'artisan' | 'customer'): Promise<AppUser> {
+  async signup(email: string, password: string, displayName: string, userType: 'artisan' | 'art-lover'): Promise<AppUser> { // <-- CHANGED
     const cred = await createUserWithEmailAndPassword(this.auth, email, password);
-    // Profile must be created FIRST
-    await this.createUserProfile(cred.user.uid, displayName, email, userType);
+    await this.createUserProfile(cred.user.uid, displayName, email, userType); // <-- CHANGED
     await updateProfile(cred.user, { displayName });
 
     const newUser: AppUser = {
@@ -128,17 +119,14 @@ export class AuthService {
         this.currentUser.set(newUser);
         console.log("Manual signal set after signup:", this.currentUser());
     });
-    return newUser; // Return the newly created AppUser
+    return newUser;
   }
 
-  // Modified to return AppUser or null
   async login(email: string, password: string): Promise<AppUser | null> {
     const cred = await signInWithEmailAndPassword(this.auth, email, password);
-    // After successful sign-in, immediately fetch the profile
     return await this.fetchUserProfile(cred.user);
   }
 
-  // Modified to return AppUser or null (if redirecting)
   async loginWithGoogle(): Promise<AppUser | null> {
     const provider = new GoogleAuthProvider();
     try {
@@ -155,20 +143,19 @@ export class AuthService {
           email: user.email || ''
         }));
         this.ngZone.run(() => this.router.navigate(['/complete-profile']));
-        return null; // Indicate profile completion needed
+        return null;
       } else {
         console.log('Existing Google user logged in.');
-        // Profile exists. Fetch it to get userType and update signal
         const profile = docSnap.data();
         const existingUser: AppUser = {
            ...user,
-           userType: profile?.['userType'] as ('artisan' | 'customer' | undefined)
+           userType: profile?.['userType'] as ('artisan' | 'art-lover' | undefined) // <-- CHANGED
         };
         this.ngZone.run(() => {
             this.currentUser.set(existingUser);
             console.log("Manual signal set for existing Google user:", this.currentUser());
         });
-        return existingUser; // Return the AppUser
+        return existingUser;
       }
     } catch (error: any) {
       console.error("Google Sign-In Error:", error);
@@ -184,8 +171,7 @@ export class AuthService {
     this.ngZone.run(() => this.router.navigate(['/login']));
   }
 
-  // Modified to return the updated AppUser or null on error
-  async createUserProfile(uid: string, name: string | null, email: string | null, userType: 'artisan' | 'customer', merge = false): Promise<AppUser | null> {
+  async createUserProfile(uid: string, name: string | null, email: string | null, userType: 'artisan' | 'art-lover', merge = false): Promise<AppUser | null> { // <-- CHANGED
     const profileName = name || 'User';
     const profileEmail = email || 'No Email';
     const userDocRef = doc(this.firestore, `users/${uid}`);
@@ -194,7 +180,7 @@ export class AuthService {
         uid,
         name: profileName,
         email: profileEmail,
-        userType,
+        userType, // <-- Will be 'artisan' or 'art-lover'
         createdAt: new Date().toISOString(),
     };
 
@@ -211,23 +197,18 @@ export class AuthService {
             email: profileEmail,
             userType: userType
           };
-          // Update signal immediately
           this.ngZone.run(() => {
             this.currentUser.set(updatedUser);
             console.log("Signal updated after profile creation/update:", this.currentUser());
           });
       }
-      return updatedUser ?? { ...profileData, // Construct a basic user object if authUser isn't current somehow
-            // Add required User fields if needed, though they might be missing
-            // This case is less likely but provides a fallback return
-            providerId: 'firebase', // Example placeholder
-            delete: async () => {}, // Example placeholder
-            getIdToken: async () => '', // Example placeholder
-            // ... add other required User fields/methods with placeholders
+      return updatedUser ?? { ...profileData,
+            providerId: 'firebase',
+            delete: async () => {},
+            getIdToken: async () => '',
           } as unknown as AppUser;
     } catch (error) {
       console.error(`Firestore Error: Failed to create/update profile for UID: ${uid}`, error);
-      // Don't update signal on error, return null to indicate failure
       return null;
     }
   }

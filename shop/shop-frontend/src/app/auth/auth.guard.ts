@@ -1,4 +1,3 @@
-# shop/shop-frontend/src/app/auth/auth.guard.ts
 // shop/shop-frontend/src/app/auth/auth.guard.ts
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';

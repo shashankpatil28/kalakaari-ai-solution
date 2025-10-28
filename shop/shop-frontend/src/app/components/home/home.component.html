@@ -1,4 +1,3 @@
-# shop/shop-frontend/src/app/components/home/home.component.html
 <div class="container py-12 font-sans">
   <header class="text-center mb-12">
     <h1 class="text-5xl font-extrabold text-accent tracking-tight leading-tight">
@@ -10,77 +9,94 @@
     </p>
   </header>
 
-  <div *ngIf="isLoading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-    <app-skeleton-card *ngFor="let i of skeletonItems"></app-skeleton-card>
-  </div>
+  <!-- Loading Skeletons -->
+  @if (isLoading()) {
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+      @for (_ of skeletonItems; track $index) {
+        <app-skeleton-card></app-skeleton-card>
+      }
+    </div>
+  }
 
-  <div *ngIf="errorMessage && !isLoading" class="text-center text-red-400 text-lg font-medium py-16">
-     <p>{{ errorMessage }}</p>
-  </div>
+  <!-- Error Message -->
+  @if (errorMessage() && !isLoading()) {
+    <div class="text-center text-red-400 text-lg font-medium py-16">
+       <p>{{ errorMessage() }}</p>
+    </div>
+  }
 
-  <div *ngIf="!isLoading && products.length === 0 && !errorMessage" class="text-center text-text-muted text-lg py-16">
-    <p>No artisan products found yet. The gallery is currently empty.</p>
-  </div>
+  <!-- No Products Message -->
+  @if (!isLoading() && products.length === 0 && !errorMessage()) {
+    <div class="text-center text-text-muted text-lg py-16">
+      <p>No artisan products found yet. The gallery is currently empty.</p>
+    </div>
+  }
 
-  <div
-    *ngIf="!isLoading && products.length > 0"
-    class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8"
-  >
-    <div
-      *ngFor="let product of products"
-      class="bg-surface rounded-xl overflow-hidden border border-secondary transition-all duration-300 group relative hover:border-primary hover:shadow-lg hover:shadow-primary/10"
-    >
-        <div class="relative w-full h-72 overflow-hidden">
-        <img
-          [src]="product.art_info.photo.startsWith('data:image') ? product.art_info.photo : 'data:image/png;base64,' + product.art_info.photo"
-          alt="{{ product.art_info.name }}"
-          loading="lazy"
-          class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-          (error)="onImgError($event)"
-        />
+  <!-- Product Grid -->
+  @if (!isLoading() && products.length > 0) {
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+      @for (product of products; track product.verification.public_id) {
         <div
-          class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-80"
-          aria-hidden="true"
-        ></div>
-        <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
-             <div class="flex space-x-3">
-                 <a
-                  [href]="product.verification.verification_url"
-                  target="_blank"
-                  class="flex-1 text-center py-2 px-4 rounded-lg text-background bg-primary hover:bg-primary-light transition-colors duration-300 font-semibold text-sm"
-                 >
-                   Verify Provenance
-                 </a>
-                 <button
-                  class="flex-1 text-center py-2 px-4 rounded-lg text-accent bg-secondary hover:bg-secondary-light transition-colors duration-300 font-semibold text-sm"
-                 >
-                   View Certificate
-                 </button>
-             </div>
-        </div>
-      </div>
+          class="bg-surface rounded-xl overflow-hidden border border-secondary transition-all duration-300 group relative hover:border-primary hover:shadow-lg hover:shadow-primary/10 flex flex-col"
+          > <!-- Added flex flex-col -->
+            <div class="relative w-full h-72 overflow-hidden">
+            <img
+              [src]="product.art_info.photo.startsWith('data:image') ? product.art_info.photo : 'data:image/png;base64,' + product.art_info.photo"
+              [alt]="product.art_info.name"
+              loading="lazy"
+              class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+              (error)="onImgError($event)"
+            />
+            <div
+              class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-80"
+              aria-hidden="true"
+            ></div>
+            <!-- Overlay with Button -->
+            <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end items-end p-4"> <!-- Changed flex properties -->
+                
+                <!-- Verify Button (Now positioned bottom-right) -->
+                <button
+                  (click)="verify(product.verification.public_id)"
+                  [disabled]="verifyingId() === product.verification.public_id"
+                  class="flex items-center justify-center py-2 px-4 rounded-lg text-background bg-primary hover:bg-primary-light transition-colors duration-300 font-semibold text-sm disabled:opacity-70 disabled:cursor-wait"
+                >
+                  @if (verifyingId() === product.verification.public_id) {
+                    <svg class="animate-spin -ml-1 mr-3 h-4 w-4 text-background" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>Verifying...</span>
+                  } @else {
+                    <span>Verify CraftID</span>
+                  }
+                </button>
+            </div>
+          </div>
 
-      <div class="p-6">
-        <h3 class="text-xl font-bold text-accent mb-2 truncate" title="{{ product.art_info.name }}">
-          {{ product.art_info.name }}
-        </h3>
-        <p class="text-sm text-text-muted mb-4 h-16 overflow-hidden line-clamp-3"> {{ product.art_info.description }}
-        </p>
+          <div class="p-6 flex flex-col flex-grow"> <!-- Added flex flex-col flex-grow -->
+            <h3 class="text-xl font-bold text-accent mb-2 truncate" [title]="product.art_info.name">
+              {{ product.art_info.name }}
+            </h3>
+            <p class="text-sm text-text-muted mb-4 h-16 overflow-hidden line-clamp-3 flex-grow"> {{ product.art_info.description }} <!-- Added flex-grow -->
+            </p>
 
-        <div class="flex items-center text-sm text-text-muted mb-4">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5 text-primary-light" viewBox="0 0 20 20" fill="currentColor">
-            <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" />
-          </svg>
-          <span class="font-medium text-accent mr-1">{{ product.artisan_info.name }}</span>
-          <span class="text-xs">in {{ product.artisan_info.location }}</span>
-        </div>
+            <div class="flex items-center text-sm text-text-muted mb-4 mt-auto"> <!-- Added mt-auto -->
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5 text-primary-light" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" />
+              </svg>
+              <span class="font-medium text-accent mr-1">{{ product.artisan_info.name }}</span>
+              <span class="text-xs">in {{ product.artisan_info.location }}</span>
+            </div>
 
-        <div class="border-t border-secondary/30 pt-3 mt-auto"> <div class="flex items-center justify-between text-xs text-text-muted">
-            <span>CraftID:</span>
-            <span class="font-mono text-accent/80">{{ product.verification.public_id }}</span>
+            <div class="border-t border-secondary/30 pt-3">
+              <div class="flex items-center justify-between text-xs text-text-muted">
+                <span>CraftID:</span>
+                <span class="font-mono text-accent/80">{{ product.verification.public_id }}</span>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
+      }
     </div>
-    </div>
+  }
 </div>
