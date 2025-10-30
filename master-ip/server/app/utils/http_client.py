@@ -66,3 +66,47 @@ async def _fetch_image_from_url(url: str, timeout: int = 10) -> Image.Image:
         raise HTTPException(status_code=400, detail=f"Failed to fetch image: {re}")
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to fetch image: {e}")
+
+
+def decode_base64_to_pil(base64_string: str) -> Image.Image:
+    """
+    Decode a Base64 string (with or without data URI prefix) to a PIL Image.
+    
+    Args:
+        base64_string: Base64 encoded image, optionally prefixed with 
+                      'data:image/...;base64,' or similar data URI format.
+    
+    Returns:
+        PIL.Image in RGB mode
+    
+    Raises:
+        HTTPException(400) if decoding fails
+    """
+    import base64
+    import re
+    
+    try:
+        # Strip data URI prefix if present (e.g., "data:image/jpeg;base64,")
+        if base64_string.startswith('data:'):
+            # Extract just the base64 part after the comma
+            match = re.match(r'data:image/[^;]+;base64,(.+)', base64_string)
+            if match:
+                base64_string = match.group(1)
+            else:
+                # Fallback: try to split by comma
+                parts = base64_string.split(',', 1)
+                if len(parts) == 2:
+                    base64_string = parts[1]
+        
+        # Decode base64 to bytes
+        image_bytes = base64.b64decode(base64_string)
+        
+        # Convert to PIL Image
+        img = Image.open(BytesIO(image_bytes)).convert("RGB")
+        return img
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Failed to decode Base64 image: {e}"
+        )

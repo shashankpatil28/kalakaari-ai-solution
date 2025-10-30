@@ -24,7 +24,7 @@ PLATFORM_PUBKEY_PATH=<absolute_path_of_sign_pub.pem>
 ~~~
 curl -sS -X POST "http://localhost:8000/create" \
   -H "Content-Type: application/json" \
-  -d '{"artisan":{"name":"Ravi Verma","location":"Mithila, Bihar","contact_number":"9876543210","email":"ravi@example.com","aadhaar_number":"1234-5678-9101"},"art":{"name":"Madhubani Painting","description":"Traditional artwork depicting rural folklore","photo_url":"https://cdn.example.com/img123.jpg"}}' | jq
+  -d '{"artisan":{"name":"Ravi Verma","location":"Mithila, Bihar","contact_number":"9876543210","email":"ravi@example.com","aadhaar_number":"1234-5678-9101"},"art":{"name":"Madhubani Painting","description":"Traditional artwork depicting rural folklore","photo":"https://cdn.example.com/img123.jpg"}}' | jq
 ~~~
 
 

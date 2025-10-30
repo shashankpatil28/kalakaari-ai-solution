@@ -93,3 +93,24 @@ async def _query_text_index(vector: list, top_k: int = 5) -> list:
 
     matches = res.get("matches") or getattr(res, "matches", []) or []
     return matches
+
+
+async def _upsert_text_index(doc_id: str, vec: list, pine_meta: dict) -> dict:
+    """Async wrapper for upserting to the TEXT index."""
+    idx = _get_text_index()
+
+    def _upsert():
+        # Use new SDK syntax
+        return idx.upsert(vectors=[(doc_id, vec, pine_meta)])
+
+    try:
+        resp = await asyncio.to_thread(_upsert)
+        # normalize response to plain dict
+        if isinstance(resp, dict):
+            return resp
+        upserted_count = getattr(resp, "upserted_count", None)
+        if upserted_count is not None:
+            return {"upserted_count": int(upserted_count)}
+        return {"info": "upserted"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Pinecone (Text) upsert failed: {e}")
