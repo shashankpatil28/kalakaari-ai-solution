@@ -1,8 +1,4 @@
-<!-- shop/shop-frontend/src/app/app.component.html -->
-
-<!-- Global Toast Notification (Updated to use uiState) -->
-<!-- Positioned at bottom-right, z-index 100 -->
-@if (uiState.toast(); as toast) { <!-- <-- USE uiState -->
+@if (uiState.toast(); as toast) {
   <div
     class="fixed bottom-5 right-5 z-[100] max-w-xs w-full rounded-lg shadow-2xl p-4 border"
     [ngClass]="{
@@ -12,32 +8,76 @@
     }"
   >
     <div class="flex items-center gap-3">
-      <!-- Success Icon -->
       @if (toast.type === 'success') {
         <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
       }
-      <!-- Error Icon -->
       @if (toast.type === 'error') {
         <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
       }
-      <!-- Info Icon -->
       @if (toast.type === 'info') {
         <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
       }
-      <!-- Toast Message -->
       <p class="font-medium text-sm">{{ toast.message }}</p>
     </div>
   </div>
 }
 
-<!-- Your Existing Navbar (Now conditional) -->
-@if (showNavbar()) { <!-- <-- WRAPPED IN @if -->
+@if (showNavbar()) {
   <nav class="bg-surface sticky top-0 z-50 border-b border-secondary">
-    <div class="container flex items-center justify-between py-4">
-      <h1 class="text-2xl font-bold text-accent">Kalaakari Shop</h1>
-      <div class="flex items-center gap-4">
-        <!-- Logged Out State -->
-        <ng-container *ngIf="!auth.currentUser()">
+    <div class="container flex items-center justify-between py-4 gap-4">
+      
+      <h1 class="text-2xl font-bold text-accent flex-shrink-0">Kalaakari Shop</h1>
+      <div class="flex items-center gap-4 justify-end w-full">
+        
+        @if (userState.isLoggedIn()) {
+          <div class="relative w-full max-w-xs">
+            <input 
+              type="text" 
+              placeholder="Search by craft or artisan..."
+              [(ngModel)]="searchQuery"
+              (ngModelChange)="onSearchChange($event)"
+              class="w-full pl-10 pr-4 py-2 rounded-lg bg-background border border-secondary text-accent placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <svg class="w-5 h-5 text-text-muted" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+          </div>
+
+          <div id="profileWrapper" class="relative">
+            <button 
+              (click)="toggleProfileMenu()"
+              class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white text-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-surface focus:ring-primary"
+              [style.backgroundColor]="userState.userAvatarColor()"
+            >
+              {{ userState.userInitial() }}
+            </button>
+            
+            @if (isProfileMenuOpen()) {
+              <div class="absolute right-0 top-full mt-2 w-56 bg-surface rounded-lg shadow-xl border border-secondary z-20 overflow-hidden">
+                <div class="px-4 py-3 border-b border-secondary/50">
+                  <p class="text-xs text-text-muted">Signed in as</p>
+                  <p class="text-sm font-medium text-accent truncate" [title]="userState.greetingName()">
+                    {{ userState.greetingName() }}
+                  </p>
+                </div>
+                <div class="py-1">
+                  <button 
+                    (click)="logout()"
+                    class="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 flex items-center gap-2 transition-colors"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                    <span>Logout</span>
+                  </button>
+                  </div>
+              </div>
+            }
+          </div>
+
+        } @else {
           <a
             routerLink="/login"
             class="font-medium text-text-muted hover:text-accent hover:border-accent transition-colors duration-300 px-4 py-2 border border-secondary rounded-md"
@@ -48,26 +88,12 @@
             class="font-medium text-text-muted hover:text-accent hover:border-accent transition-colors duration-300 px-4 py-2 border border-secondary rounded-md"
             >Sign Up</a
           >
-        </ng-container>
-
-        <!-- Logged In State -->
-        <ng-container *ngIf="auth.currentUser() as user">
-          <span class="font-medium text-text-muted px-4 py-2 border border-secondary rounded-md">
-            Hello, {{ user.displayName || 'User' }}  
-          </span>
-          <button
-            (click)="auth.logout()"
-            class="font-medium text-text-muted hover:text-accent hover:border-accent transition-colors duration-300 px-4 py-2 border border-secondary rounded-md"
-          >
-            Logout
-          </button>
-        </ng-container>
+        }
       </div>
     </div>
   </nav>
 }
 
-<!-- Main Router Outlet (Unchanged) -->
 <main>
   <div [@routerAnimation]="getRouteAnimationData()">
     <router-outlet></router-outlet>

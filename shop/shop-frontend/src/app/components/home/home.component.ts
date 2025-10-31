@@ -1,7 +1,9 @@
-import { Component, OnInit, inject, signal } from '@angular/core'; // <-- Import signal
+// shop-frontend/src/app/components/home/home.component.ts
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ApiClientService, Product, VerificationResponse } from '../../services/api-client.service'; // <-- Import VerificationResponse
-import { UiStateService } from '../../services/ui-state.service'; // <-- Import UiStateService
+import { ApiClientService, Product, VerificationResponse } from '../../services/api-client.service';
+import { UiStateService } from '../../services/ui-state.service';
+import { ShopStateService } from '../../services/shop-state.service';
 import { catchError, finalize, map, of, tap } from 'rxjs';
 import { SkeletonCardComponent } from '../utils/skeleton-card/skeleton-card.component';
 
@@ -13,21 +15,31 @@ import { SkeletonCardComponent } from '../utils/skeleton-card/skeleton-card.comp
   styleUrls: ['./home.component.scss']
 })
 export class HomeComponent implements OnInit {
-  // Use inject for cleaner dependency injection
+  // Injected Services
   private apiService = inject(ApiClientService);
-  private uiState = inject(UiStateService); // <-- Inject UiStateService
+  private uiState = inject(UiStateService);
+  private shopState = inject(ShopStateService);
 
-  products: Product[] = [];
-  isLoading = signal(true); // <-- Use signal for loading state
-  errorMessage = signal<string | null>(null); // <-- Use signal for error message
-
-  // Signal to track which CraftID is currently being verified
+  // State Signals
+  allProducts = signal<Product[]>([]); // <-- REMOVED 'private'
+  isLoading = signal(true);
+  errorMessage = signal<string | null>(null);
   verifyingId = signal<string | null>(null);
+  
+  // Computed Signal for Filtering
+  filteredProducts = computed(() => {
+    const query = this.shopState.searchQuery().toLowerCase();
+    if (!query) {
+      return this.allProducts(); // Return all if search is empty
+    }
+    return this.allProducts().filter(product => 
+      product.art_info.name.toLowerCase().includes(query) ||
+      product.artisan_info.name.toLowerCase().includes(query)
+    );
+  });
 
-  // Array to control how many skeletons are shown
+  // Other properties
   skeletonItems = new Array(6);
-
-  // Polygonscan base URL for Amoy testnet
   readonly polygonscanBaseUrl = 'https://amoy.polygonscan.com/tx/';
 
   ngOnInit(): void {
@@ -36,55 +48,48 @@ export class HomeComponent implements OnInit {
 
   onImgError(event: Event): void {
     const target = event.target as HTMLImageElement;
-    target.src = '/placeholder.png'; // Make sure placeholder.png exists in /public or /assets
+    target.src = '/placeholder.png';
   }
 
   fetchProducts(showLoading: boolean = true): void {
     if (showLoading) {
       this.isLoading.set(true);
       this.errorMessage.set(null);
-      this.products = [];
+      this.allProducts.set([]);
     }
     this.apiService.getProducts().pipe(
       tap(data => {
-        this.products = data;
+        this.allProducts.set(data);
       }),
       catchError(error => {
         console.error('Failed to fetch products:', error);
         this.errorMessage.set('Failed to load products. Please check the backend connection or API status.');
-        this.products = [];
-        return of([]); // Complete the stream gracefully
+        this.allProducts.set([]);
+        return of([]);
       }),
       finalize(() => {
-        this.isLoading.set(false); // Ensure loading stops
+        this.isLoading.set(false);
       })
-    ).subscribe(); // No need for next/complete handlers here
+    ).subscribe();
   }
 
-  /**
-   * NEW: Handles the verification button click.
-   * Fetches verification status and redirects or shows a message.
-   * @param publicId The CraftID to verify.
-   */
   verify(publicId: string): void {
-    if (!publicId) return; // Prevent call if ID is missing
+    if (!publicId) return; 
 
-    this.verifyingId.set(publicId); // Set loading state for this specific button
+    this.verifyingId.set(publicId);
 
     this.apiService.verifyCraftID(publicId).pipe(
       finalize(() => {
-        this.verifyingId.set(null); // Clear loading state when done (success or error)
+        this.verifyingId.set(null);
       })
     ).subscribe({
       next: (response: VerificationResponse) => {
         console.log('Verification Response:', response);
         if (response.tx_hash) {
-          // Transaction hash exists, redirect to Polygonscan
           const url = `${this.polygonscanBaseUrl}${response.tx_hash}`;
           console.log(`Redirecting to: ${url}`);
-          window.open(url, '_blank'); // Open in a new tab
+          window.open(url, '_blank');
         } else {
-          // No transaction hash, show appropriate message
           let message = response.verification_details?.reason || 'Verification is pending.';
           if (response.status === 'anchored' && !response.tx_hash) {
              message = 'Anchored, but transaction hash is missing. Please contact support.';
@@ -92,7 +97,7 @@ export class HomeComponent implements OnInit {
              message = 'Anchoring to the blockchain is still pending.';
           } else if (response.is_tampered) {
               message = 'Warning: Metadata may have been tampered with!';
-              this.uiState.showToast(message, 'error', 5000); // Show longer error
+              this.uiState.showToast(message, 'error', 5000);
               return;
           }
           this.uiState.showToast(message, 'info');

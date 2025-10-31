@@ -33,9 +33,9 @@ logger = logging.getLogger(__name__)
 
 
 async def create_craftid(data: OnboardingData):
-    # ensure DB is initialized (with recovery)
-    await ensure_db_ready_or_502()
-
+    """
+    Create a new CraftID with the provided onboarding data.
+    """
     coll = collection("craftids")
 
     art_name_norm = data.art.name.strip().lower()
@@ -244,7 +244,6 @@ async def verify_craftid(public_id: str):
     """
     Verify the integrity and anchoring status of a CraftID.
     """
-    await ensure_db_ready_or_502()
     
     coll = collection("craftids")
     

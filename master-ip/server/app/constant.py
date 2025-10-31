@@ -33,3 +33,22 @@ FETCH_HEADERS = {
     "Accept": "image/*,*/*;q=0.8",
     "Referer": "https://upload.wikimedia.org/"
 }
+
+# ============================================
+# QUEUE & BATCHER CONFIGURATION
+# ============================================
+
+# --- Queue ---
+ANCHOR_QUEUE_COLL="anchor_queue"
+VISIBILITY_TIMEOUT_SECONDS=300
+MAX_RETRIES=5
+
+# --- Batcher ---
+BATCH_LIMIT=5
+ACTIVE_POLL_INTERVAL=10
+IDLE_POLL_INTERVAL=300
+IDLE_THRESHOLD_MINUTES=30
+
+# --- Web3 Timeouts ---
+WEB3_GAS_LIMIT=200000
+WEB3_RECEIPT_TIMEOUT=120

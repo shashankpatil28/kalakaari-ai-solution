@@ -10,7 +10,6 @@ from app.schemas.search import QuerySchema, QueryArtisan, QueryArt
 
 # Import DB helpers
 from app.db.mongodb import collection
-from app.utils.db_utils import ensure_db_ready_or_502
 
 # Import embedders
 from app.utils.embedders import ClipEmbedder, embed_text
@@ -54,7 +53,6 @@ async def image_search_url(image_url: str, top_k: int, include_meta: bool):
     """
     Controller logic for image search.
     """
-    await ensure_db_ready_or_502()
     imgs_col = collection("image_index")
 
     pil_img = await _fetch_image_from_url(image_url)
@@ -90,7 +88,6 @@ async def image_search_upsert(
     """
     Controller logic for upserting an image.
     """
-    await ensure_db_ready_or_502()
     imgs_col = collection("image_index")
 
     if not image_url:
