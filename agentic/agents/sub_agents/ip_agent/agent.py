@@ -99,7 +99,7 @@ def call_image_similarity_search(image_url: str) -> dict:
               {"status": "duplicate", "score": float, "message": "..."}
               {"status": "error", "message": "..."}
     """
-    SIMILARITY_THRESHOLD = 0.85
+    SIMILARITY_THRESHOLD = 0.60
     try:
         print(f"--- TOOL: call_image_similarity_search received image_url: '{image_url}' ---")
 
@@ -164,92 +164,136 @@ def call_image_similarity_search(image_url: str) -> dict:
 def call_master_ip_service(onboarding_data: str) -> dict:
     """
     Tool for ip_agent:
-    Downloads the image from photo_url, converts it to Base64, and submits
-    the complete data (with Base64 'photo' field) to the Master IP backend
-    /create endpoint, matching the backend's expectation.
+    Downloads the image from photo_url, converts it to Base64 (with prefix),
+    applies failsafe field name corrections, and submits the complete data
+    to the Master IP backend /create endpoint.
 
     Args:
         onboarding_data (str): JSON string containing onboarding details
-                               (including art.photo_url).
+                               (potentially with incorrect field names but
+                               containing 'art.photo_url').
 
     Returns:
-        dict: Structured response with status, message, and backend response.
+        dict: Structured response with status ('success', 'conflict', 'error'),
+              message, and backend response.
     """
     try:
+        # 1. Parse incoming data
         data_payload = json.loads(onboarding_data)
+
+        # 2. Extract image URL
         image_url = data_payload.get("art", {}).get("photo_url")
         if not image_url:
             logger.error("[ip_agent] Photo URL missing for /create.")
             return {"status": "error", "message": "Artwork photo URL is missing."}
 
+        # 3. Download image bytes
+        logger.info(f"[ip_agent] Downloading image from: {image_url} for Base64 conversion.")
         try:
-            image_response = requests.get(image_url, timeout=30)
+            image_response = requests.get(image_url, timeout=60) # Increased timeout for download
             image_response.raise_for_status()
             image_bytes = image_response.content
         except requests.exceptions.RequestException as e:
-            logger.error(f"[ip_agent] Failed image download: {e}")
+            logger.error(f"[ip_agent] Failed image download for /create: {e}")
             return {"status": "error", "message": "Failed to retrieve image from URL."}
 
+        # 4. Convert image bytes to Base64 string with prefix
         base64_encoded_image = base64.b64encode(image_bytes).decode('utf-8')
         mime_type = "image/jpeg" if image_url.lower().endswith((".jpg", ".jpeg")) else "image/png"
         base64_string_with_prefix = f"data:{mime_type};base64,{base64_encoded_image}"
+        print(f"--- TOOL: Base64 prefix generated: data:{mime_type};base64,... ---") # Debug print
 
-        # Prepare payload AND APPLY FAILSAFE FIXES
-        create_payload = json.loads(onboarding_data)
+        # 5. Prepare final payload AND APPLY FAILSAFE FIXES
+        create_payload = json.loads(onboarding_data) # Fresh copy
         if 'artisan' in create_payload and isinstance(create_payload['artisan'], dict):
-            print("--- TOOL: Checking for field name fixes... ---") # Added debug print
+            print("--- TOOL /create: Checking for field name fixes... ---")
+            if 'full_name' in create_payload['artisan']:
+                 print("--- TOOL FIX /create: Renaming 'full_name' -> 'name' ---")
+                 create_payload['artisan']['name'] = create_payload['artisan'].pop('full_name')
             if 'email_address' in create_payload['artisan']:
-                print("--- TOOL FIX: Renaming 'email_address' -> 'email' ---")
+                print("--- TOOL FIX /create: Renaming 'email_address' -> 'email' ---")
                 create_payload['artisan']['email'] = create_payload['artisan'].pop('email_address')
             if 'contact' in create_payload['artisan']:
-                print("--- TOOL FIX: Renaming 'contact' -> 'contact_number' ---")
+                print("--- TOOL FIX /create: Renaming 'contact' -> 'contact_number' ---")
                 create_payload['artisan']['contact_number'] = create_payload['artisan'].pop('contact')
             if 'aadhaar' in create_payload['artisan']:
-                print("--- TOOL FIX: Renaming 'aadhaar' -> 'aadhaar_number' ---")
+                print("--- TOOL FIX /create: Renaming 'aadhaar' -> 'aadhaar_number' ---")
                 create_payload['artisan']['aadhaar_number'] = create_payload['artisan'].pop('aadhaar')
-            print("--- TOOL: Field name checks complete. ---") # Added debug print
+            print("--- TOOL /create: Field name checks complete. ---")
         else:
             logger.error("[ip_agent] Invalid structure: 'artisan' key missing.")
             return {"status": "error", "message": "Internal data error (artisan)."}
 
+        # Modify 'art' dictionary for Base64 photo
         if 'art' in create_payload and isinstance(create_payload['art'], dict):
-            create_payload['art'].pop('photo_url', None)
-            create_payload['art']['photo'] = base64_string_with_prefix
+            create_payload['art'].pop('photo_url', None) # Remove URL field
+            create_payload['art']['photo'] = base64_string_with_prefix # Add Base64 field
         else:
             logger.error("[ip_agent] Invalid structure: 'art' key missing.")
             return {"status": "error", "message": "Internal data error (art)."}
 
+        # 6. Send the FIXED payload to the /create endpoint
         create_url = os.getenv("MASTER_IP_ENDPOINT", "https://master-ip-service-978458840399.asia-southeast1.run.app/create")
-        logger.info(f"[ip_agent] Sending payload (fields corrected) to CREATE: {create_url}")
-        print(f"--- TOOL: Final Payload for /create: {json.dumps(create_payload, indent=2)} ---")
+        logger.info(f"[ip_agent] Sending payload (fields corrected, Base64 image) to CREATE endpoint: {create_url}")
+        print(f"--- TOOL: Final Payload for /create: {json.dumps(create_payload, indent=2)} ---") # Debug print
 
-        response = requests.post(create_url, json=create_payload, timeout=60)
+        response = requests.post(create_url, json=create_payload, timeout=90) # Increased timeout further
 
+        # 7. Handle Specific HTTP Errors
         if response.status_code == 409:
-            logger.warning(f"[ip_agent] 409 Conflict: {response.text}")
-            error_detail = response.json().get("detail", "Similar name exists.")
-            return {"status": "conflict", "message": error_detail, "response": response.text}
+             logger.warning(f"[ip_agent] Received 409 Conflict from /create: {response.text}")
+             error_detail = response.json().get("detail", "A similar product name already exists.")
+             return {"status": "conflict", "message": error_detail, "response": response.text}
+        elif response.status_code == 422:
+             logger.error(f"[ip_agent] Received 422 Unprocessable Entity from /create: {response.text}")
+             try:
+                 error_detail = response.json().get("detail", "Validation error.")
+                 if isinstance(error_detail, list) and error_detail:
+                     first_error = error_detail[0]
+                     error_msg = f"{first_error.get('msg', 'Validation error')} in field '{'.'.join(map(str, first_error.get('loc', ['unknown'])))}'"
+                     error_detail = error_msg
+             except json.JSONDecodeError:
+                 error_detail = "Validation error (non-JSON response)."
+             return {"status": "error", "message": f"Data validation failed on the server: {error_detail}", "response": response.text}
 
-        response.raise_for_status()
+        response.raise_for_status() # Raise errors for other bad statuses
 
-        logger.info("[ip_agent] Successfully submitted to /create.")
-        success_response_payload = {
-            "status": "success",
-            "message": response.json().get("message", "CraftID created."),
-            "response": response.json(),
-        }
+        # 8. Process successful response (200 or 201)
+        logger.info("[ip_agent] Successfully submitted onboarding data to /create.")
+        try:
+            response_json = response.json()
+            success_response_payload = {
+                "status": "success",
+                "message": response_json.get("message", "CraftID created successfully."),
+                 "response": response_json, # Return the full backend JSON response
+            }
+        except json.JSONDecodeError:
+             success_response_payload = { "status": "success", "message": "CraftID submitted successfully (non-JSON response).", "response": response.text }
         return success_response_payload
 
+    # --- Robust Error Handling ---
+    except json.JSONDecodeError as e:
+        logger.error(f"[ip_agent] Invalid onboarding_data JSON format in /create tool: {e}")
+        return {"status": "error", "message": "Invalid data format received."}
+    except requests.exceptions.Timeout as e:
+        logger.error(f"[ip_agent] /create request timed out: {e}")
+        print(f"--- TOOL ERROR (Timeout): {e} ---")
+        return {"status": "error", "message": "The request to the CraftID creation service timed out. Please try again later."}
     except requests.exceptions.RequestException as e:
         logger.error(f"[ip_agent] /create request failed: {e}")
-        error_details = e.response.text if hasattr(e, 'response') and e.response else str(e)
-        logger.error(f"[ip_agent] Error details: {error_details}")
-        print(f"--- TOOL ERROR (RequestException): {error_details} ---") # Added print
-        return {"status": "error", "message": f"Unable to connect to CraftID creation service: {error_details}"}
+        error_status = "Network/Connection"
+        error_details = str(e)
+        if hasattr(e, 'response') and e.response is not None:
+             error_status = e.response.status_code
+             try: error_details = e.response.json().get('detail', e.response.text)
+             except: error_details = e.response.text
+        logger.error(f"[ip_agent] Error details (Status {error_status}): {error_details}")
+        print(f"--- TOOL ERROR (RequestException - Status {error_status}): {error_details} ---")
+        return {"status": "error", "message": f"Unable to connect/process request with CraftID creation service ({error_status}). Please try later.", "details": error_details}
     except Exception as e:
         logger.exception(f"[ip_agent] Unexpected error in /create call: {e}")
-        print(f"--- TOOL ERROR (Exception): {e} ---") # Added print
-        return {"status": "error", "message": f"An unexpected error occurred: {str(e)}"}
+        print(f"--- TOOL ERROR (Exception): {e} ---")
+        return {"status": "error", "message": f"An unexpected error occurred during submission: {str(e)}"}
 load_dotenv()
 
 ip_agent = Agent(
