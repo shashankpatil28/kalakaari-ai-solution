@@ -12,6 +12,7 @@ from app.schemas.craft import OnboardingData, VerificationResponse
 # Import DB and Utils
 from app.db.mongodb import ensure_initialized, collection, next_sequence, close as mongo_close
 from app.utils.db_utils import ensure_db_ready_or_502
+from app.utils.http_client import decode_base64_to_pil
 
 # Import Config
 from app.constant import SECRET_KEY, ALGORITHM
@@ -21,6 +22,14 @@ from chain.hashing import compute_public_hash
 from chain.signer import sign_attestation
 from chain.queue import enqueue_item
 from chain.web3_client import is_anchored
+
+# Import embedding and Pinecone utilities
+from app.utils.embedders import ClipEmbedder, embed_text
+from app.utils.pinecone import _upsert_image_index, _upsert_text_index
+
+# Import logging
+import logging
+logger = logging.getLogger(__name__)
 
 
 async def create_craftid(data: OnboardingData):
@@ -119,6 +128,79 @@ async def create_craftid(data: OnboardingData):
         except Exception as e2:
             raise HTTPException(status_code=500, detail=f"DB insert error: {e}; recovery: {e2}")
 
+    # --- NEW: Upsert image to Pinecone with the same public_id ---
+    try:
+        logger.info(f"[create_craftid] Upserting image to Pinecone for {public_id}")
+        
+        # Handle both URL and Base64 image formats
+        photo_data = data.art.photo
+        if photo_data.startswith('http://') or photo_data.startswith('https://'):
+            # It's a URL, fetch the image
+            from app.utils.http_client import _fetch_image_from_url
+            pil_image = await _fetch_image_from_url(photo_data)
+        else:
+            # It's Base64, decode it
+            pil_image = decode_base64_to_pil(photo_data)
+        
+        # Embed the image using ClipEmbedder (lazy-loaded singleton)
+        embedder = ClipEmbedder()
+        image_vector = await asyncio.to_thread(embedder.embed_pil, pil_image)
+        
+        # Prepare Pinecone metadata (minimal info for search results)
+        pinecone_metadata = {
+            "source": "craftid_creation",
+            "brief": f"{data.artisan.name} - {data.art.name}",
+            "artisan_name": data.artisan.name,
+            "art_name": data.art.name,
+            "public_id": public_id
+        }
+        
+        # Upsert to Pinecone with the same public_id as MongoDB
+        await _upsert_image_index(public_id, image_vector, pinecone_metadata)
+        logger.info(f"[create_craftid] Successfully upserted image to Pinecone for {public_id}")
+        
+    except Exception as e:
+        # Log warning but don't fail the entire request (MongoDB record is already created)
+        logger.warning(f"[create_craftid] Failed to upsert image to Pinecone for {public_id}: {e}")
+        # Could optionally add a flag to the response indicating partial success
+    
+    # --- NEW: Upsert metadata to Pinecone TEXT index with the same public_id ---
+    try:
+        logger.info(f"[create_craftid] Upserting metadata to Pinecone TEXT index for {public_id}")
+        
+        # Build metadata text string (same logic as metadata_search uses)
+        meta_text_parts = [
+            (data.artisan.name or "").strip(),
+            (data.artisan.location or "").strip(),
+            (data.art.name or "").strip(),
+            (data.art.description or "").strip()
+        ]
+        meta_text = " ".join([p for p in meta_text_parts if p])
+        
+        # Embed the metadata text
+        text_vector = embed_text(meta_text)  # Returns numpy array
+        
+        # Prepare Pinecone metadata for TEXT index (store searchable fields)
+        # Note: Pinecone metadata must be flat - no nested dicts
+        text_pinecone_metadata = {
+            "public_id": public_id,
+            "artisan_name": data.artisan.name,
+            "artisan_location": data.artisan.location or "",
+            "artisan_aadhaar": data.artisan.aadhaar_number or "",
+            "art_name": data.art.name,
+            "art_description": data.art.description or "",
+            "brief": f"{data.artisan.name} - {data.art.name}"
+        }
+        
+        # Upsert to Pinecone TEXT index with the same public_id as MongoDB
+        await _upsert_text_index(public_id, text_vector.tolist(), text_pinecone_metadata)
+        logger.info(f"[create_craftid] Successfully upserted metadata to Pinecone TEXT index for {public_id}")
+        
+    except Exception as e:
+        # Log warning but don't fail the entire request (MongoDB record is already created)
+        logger.warning(f"[create_craftid] Failed to upsert metadata to Pinecone TEXT index for {public_id}: {e}")
+        # Could optionally add a flag to the response indicating partial success
+    
     # enqueue for background anchoring (queue is a separate collection/process)
     try:
         await enqueue_item({"public_id": public_id, "public_hash": public_hash, "timestamp": timestamp_iso})
