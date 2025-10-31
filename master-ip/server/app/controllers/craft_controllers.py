@@ -10,7 +10,7 @@ from uuid import uuid4
 from app.schemas.craft import OnboardingData, VerificationResponse
 
 # Import DB and Utils
-from app.db.mongodb import ensure_initialized, collection, next_sequence, close as mongo_close
+from app.db.mongodb import collection, next_sequence, close as mongo_close
 from app.utils.db_utils import ensure_db_ready_or_502
 from app.utils.http_client import decode_base64_to_pil
 
