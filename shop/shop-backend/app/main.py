@@ -54,4 +54,4 @@ app.include_router(products_router)
 
 @app.get("/")
 async def root():
-    return {"message": "Prototype Shop backend is running!"}
+    return {"message": "Shop backend is running!"}

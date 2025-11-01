@@ -5,7 +5,7 @@ import { Observable } from 'rxjs';
 // --- Interfaces for getProducts (Unchanged) ---
 export interface VerificationData {
   public_id: string;
-  public_hash: string;
+  public_hash: string | null;
   verification_url: string; // Note: This might become redundant if handled client-side
 }
 export interface ArtisanInfo { name: string; location: string; }

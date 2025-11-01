@@ -7,107 +7,97 @@ import jwt
 from datetime import datetime, timedelta
 import asyncio
 
-from app.models import OnboardingData
-# We only need 'collection' and 'next_sequence' now
-from app.mongodb import collection, next_sequence
+from app.models import ProductPayload # <-- IMPORT NEW MODEL
+# We only need 'collection' now
+from app.mongodb import collection
 
 router = APIRouter()
 SECRET_KEY = os.getenv("SECRET_KEY", "change_in_prod")
 ALGORITHM = "HS256"
 
-# REMOVED the 'ensure_db_ready_or_502' helper function entirely.
-
 @router.post("/add-product")
-async def add_product(data: OnboardingData):
-    # REMOVED: await ensure_db_ready_or_502()
+async def add_product(data: ProductPayload): # <-- USE NEW MODEL
     
     craftids = collection("craftids")
     art_name_norm = data.art.name.strip().lower()
 
     try:
-        # Simplified try/except. We only care about timeouts or major errors.
-        existing = await asyncio.wait_for(craftids.find_one({"art_name_norm": art_name_norm}), timeout=5)
-    except asyncio.TimeoutError:
-        raise HTTPException(status_code=504, detail="DB read timed out")
+        # Check for existing product using the provided public_id
+        # REMOVED asyncio.wait_for. Motor has its own timeout (serverSelectionTimeoutMS).
+        existing = await craftids.find_one({"public_id": data.public_id})
     except Exception as e:
-        # Generic error for any other DB failure
-        raise HTTPException(status_code=500, detail=f"DB read error: {e}")
+        # Catch potential ServerSelectionTimeoutError or other DB errors
+        raise HTTPException(status_code=504, detail=f"DB read error on find: {e}")
 
     if existing:
         public_id = existing.get("public_id")
-        public_hash = existing.get("public_hash")
         verification_url = f"/verify/{public_id}"
+        
+        # Get data from the stored document
+        orig_data = existing.get("original_onboarding_data", {})
+        artisan_info = orig_data.get("artisan", {})
+        art_info = orig_data.get("art", {})
+        
+        # Handle both old 'photo' and new 'photo_url' fields
+        photo = art_info.get("photo_url") or art_info.get("photo", "")
+
         return {
             "artisan_info": {
-                "name": existing["original_onboarding_data"]["artisan"]["name"],
-                "location": existing["original_onboarding_data"]["artisan"]["location"]
+                "name": artisan_info.get("name"),
+                "location": artisan_info.get("location")
             },
             "art_info": {
-                "name": existing["original_onboarding_data"]["art"]["name"],
-                "description": existing["original_onboarding_data"]["art"]["description"],
-                "photo": existing["original_onboarding_data"]["art"].get("photo", "")
+                "name": art_info.get("name"),
+                "description": art_info.get("description"),
+                "photo": photo # Return the correct photo field
             },
             "verification": {
                 "public_id": public_id,
-                "public_hash": public_hash,
+                # "public_hash": REMOVED
                 "verification_url": verification_url
             },
             "timestamp": existing.get("timestamp")
         }
 
-    # allocate seq
-    try:
-        # Simplified try/except
-        seq = await asyncio.wait_for(next_sequence("craftid_seq"), timeout=5)
-    except asyncio.TimeoutError:
-        raise HTTPException(status_code=504, detail="Failed to allocate public id (timeout)")
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Failed to allocate public id: {e}")
-
-    public_id = f"CID-{seq:05d}"
-    payload = {"public_id": public_id, "exp": datetime.utcnow() + timedelta(days=365)}
-    private_key = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
-    public_hash = hashlib.sha256((data.art.name + data.art.description + data.art.photo).encode()).hexdigest()
+    # Use the public_id from the payload
+    public_id = data.public_id
 
     doc = {
         "public_id": public_id,
-        "private_key": private_key,
-        "public_hash": public_hash,
         "art_name_norm": art_name_norm,
-        "original_onboarding_data": data.dict(),
+        "original_onboarding_data": data.dict(by_alias=True), # Use by_alias to respect 'photo_url'
         "timestamp": datetime.utcnow().isoformat() + "Z"
     }
 
     try:
-        # Simplified try/except
-        await asyncio.wait_for(craftids.insert_one(doc), timeout=5)
-    except asyncio.TimeoutError:
-        raise HTTPException(status_code=504, detail="DB insert timed out")
+        # REMOVED asyncio.wait_for
+        await craftids.insert_one(doc)
     except Exception as e:
+        # Catch potential ServerSelectionTimeoutError or other DB errors
         raise HTTPException(status_code=500, detail=f"DB insert error: {e}")
 
     verification_url = f"/verify/{public_id}"
     return {
         "artisan_info": {"name": data.artisan.name, "location": data.artisan.location},
-        "art_info": {"name": data.art.name, "description": data.art.description, "photo": data.art.photo},
-        "verification": {"public_id": public_id, "public_hash": public_hash, "verification_url": verification_url},
+        "art_info": {"name": data.art.name, "description": data.art.description, "photo": data.art.photo_url}, # <-- Use photo_url
+        "verification": {
+            "public_id": public_id,
+            # "public_hash": REMOVED
+            "verification_url": verification_url
+        },
         "timestamp": doc["timestamp"]
     }
 
 
 @router.get("/get-products")
 async def get_products():
-    # REMOVED: await ensure_db_ready_or_502()
-
     craftids = collection("craftids")
     try:
-        # Simplified try/except
+        # REMOVED asyncio.wait_for
         cursor = craftids.find().sort("timestamp", -1)
-        docs = await asyncio.wait_for(cursor.to_list(length=200), timeout=5)
-    except asyncio.TimeoutError:
-        raise HTTPException(status_code=504, detail="DB read timed out")
+        docs = await cursor.to_list(length=200)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"DB read error: {e}")
+        raise HTTPException(status_code=500, detail=f"DB read error on get: {e}")
 
     out = []
     for d in docs:
@@ -115,13 +105,16 @@ async def get_products():
         artisan = orig.get("artisan", {})
         art = orig.get("art", {})
         public_id = d.get("public_id")
-        public_hash = d.get("public_hash")
         verification_url = f"/verify/{public_id}" if public_id else ""
+        photo = art.get("photo_url") or art.get("photo", "")
 
         out.append({
             "artisan_info": {"name": artisan.get("name", ""), "location": artisan.get("location", "")},
-            "art_info": {"name": art.get("name", ""), "description": art.get("description", ""), "photo": art.get("photo", "")},
-            "verification": {"public_id": public_id or "", "public_hash": public_hash or "", "verification_url": verification_url},
+            "art_info": {"name": art.get("name", ""), "description": art.get("description", ""), "photo": photo}, # <-- Use compatible photo
+            "verification": {
+                "public_id": public_id or "", 
+                "verification_url": verification_url
+            },
             "timestamp": d.get("timestamp", "")
         })
 
