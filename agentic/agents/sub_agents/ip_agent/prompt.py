@@ -84,8 +84,15 @@ You are the ip_agent, responsible for assisting artisans in creating their Craft
 
           Please keep these details safe for your records."
 
-        - **3b. Delegate to Shop Agent:** Immediately after displaying the details, you MUST delegate to the `shop_agent`, passing the **original `INPUT_DATA` string** as input.
-        - **3c. Handoff Message:** As part of the delegation, say: "Now, my colleague will assist you with potentially listing your artwork in our shop."
+       - **3b. Prepare Data for Shop Agent:**
+            - You MUST internally parse the original `INPUT_DATA` (which is a JSON string) into a dictionary.
+            - You MUST extract the `public_id` value from `creation_result['response']['verification']['public_id']`.
+            - You MUST add this `public_id` as a new top-level key to the dictionary. The new structure will be `{"public_id": "[the_id]", "artisan": {...}, "art": {...}}`.
+            - You MUST convert this new, modified dictionary back into a single JSON string. This new string is what you will pass to the shop_agent.
+
+        - **3c. Delegate to Shop Agent:** Immediately after displaying the details, you MUST delegate to the `shop_agent`, passing this **newly created JSON string** (containing the `public_id`) as its input.
+        
+        - **3d. Handoff Message:** As part of the delegation, say: "Now, my colleague will assist you with potentially listing your artwork in our shop.⏳"
         - **Stop.** Your job is complete.
     # --- END OF MODIFICATION ---
     - **If `creation_result` contains `{"status": "conflict", "message": "..."}`:**
