@@ -1,3 +1,4 @@
+// shop-frontend/src/app/services/api-client.service.ts
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
@@ -5,8 +6,8 @@ import { Observable } from 'rxjs';
 // --- Interfaces for getProducts (Unchanged) ---
 export interface VerificationData {
   public_id: string;
-  public_hash: string | null;
-  verification_url: string; // Note: This might become redundant if handled client-side
+  // public_hash: string | null;  <-- REMOVED, backend doesn't send this in get-products
+  verification_url: string; 
 }
 export interface ArtisanInfo { name: string; location: string; }
 export interface ArtInfo { name: string; description: string; photo: string; }

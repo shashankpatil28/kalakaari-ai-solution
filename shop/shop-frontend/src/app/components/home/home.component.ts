@@ -6,11 +6,12 @@ import { UiStateService } from '../../services/ui-state.service';
 import { ShopStateService } from '../../services/shop-state.service';
 import { catchError, finalize, map, of, tap } from 'rxjs';
 import { SkeletonCardComponent } from '../utils/skeleton-card/skeleton-card.component';
+import { VerificationModalComponent } from '../verification-modal/verification-modal.component'; // <-- IMPORT MODAL
 
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule, SkeletonCardComponent],
+  imports: [CommonModule, SkeletonCardComponent, VerificationModalComponent], // <-- ADD MODAL
   templateUrl: './home.component.html',
   styleUrls: ['./home.component.scss']
 })
@@ -21,10 +22,15 @@ export class HomeComponent implements OnInit {
   private shopState = inject(ShopStateService);
 
   // State Signals
-  allProducts = signal<Product[]>([]); // <-- REMOVED 'private'
+  allProducts = signal<Product[]>([]);
   isLoading = signal(true);
   errorMessage = signal<string | null>(null);
   verifyingId = signal<string | null>(null);
+  
+  // --- NEW MODAL STATE SIGNALS ---
+  selectedVerificationData = signal<VerificationResponse | null>(null);
+  selectedProductName = signal<string | null>(null);
+  // --- END NEW SIGNALS ---
   
   // Computed Signal for Filtering
   filteredProducts = computed(() => {
@@ -40,7 +46,7 @@ export class HomeComponent implements OnInit {
 
   // Other properties
   skeletonItems = new Array(6);
-  readonly polygonscanBaseUrl = 'https://amoy.polygonscan.com/tx/';
+  // readonly polygonscanBaseUrl = 'https://amoy.polygonscan.com/tx/'; // <-- This is now in the modal
 
   ngOnInit(): void {
     this.fetchProducts();
@@ -73,40 +79,40 @@ export class HomeComponent implements OnInit {
     ).subscribe();
   }
 
-  verify(publicId: string): void {
-    if (!publicId) return; 
+  /**
+   * MODIFIED: Handles the verification button click.
+   * Fetches verification status and shows the modal.
+   * @param product The entire Product object being verified.
+   */
+  verify(product: Product): void { // <-- CHANGED signature
+    if (!product || !product.verification.public_id) return; 
 
-    this.verifyingId.set(publicId);
+    this.verifyingId.set(product.verification.public_id);
 
-    this.apiService.verifyCraftID(publicId).pipe(
+    this.apiService.verifyCraftID(product.verification.public_id).pipe(
       finalize(() => {
-        this.verifyingId.set(null);
+        this.verifyingId.set(null); // Stop button spinner
       })
     ).subscribe({
       next: (response: VerificationResponse) => {
         console.log('Verification Response:', response);
-        if (response.tx_hash) {
-          const url = `${this.polygonscanBaseUrl}${response.tx_hash}`;
-          console.log(`Redirecting to: ${url}`);
-          window.open(url, '_blank');
-        } else {
-          let message = response.verification_details?.reason || 'Verification is pending.';
-          if (response.status === 'anchored' && !response.tx_hash) {
-             message = 'Anchored, but transaction hash is missing. Please contact support.';
-          } else if (response.status === 'pending') {
-             message = 'Anchoring to the blockchain is still pending.';
-          } else if (response.is_tampered) {
-              message = 'Warning: Metadata may have been tampered with!';
-              this.uiState.showToast(message, 'error', 5000);
-              return;
-          }
-          this.uiState.showToast(message, 'info');
-        }
+        // --- MODIFIED LOGIC: SET STATE FOR MODAL ---
+        this.selectedProductName.set(product.art_info.name);
+        this.selectedVerificationData.set(response);
+        // --- END MODIFIED LOGIC ---
       },
       error: (err) => {
-        console.error(`Failed to verify CraftID ${publicId}:`, err);
-        this.uiState.showToast(`Error verifying CraftID ${publicId}. Please try again later.`, 'error');
+        console.error(`Failed to verify CraftID ${product.verification.public_id}:`, err);
+        this.uiState.showToast(`Error verifying CraftID. Please try again later.`, 'error');
       }
     });
+  }
+
+  /**
+   * NEW: Closes the verification modal.
+   */
+  closeModal(): void {
+    this.selectedVerificationData.set(null);
+    this.selectedProductName.set(null);
   }
 }

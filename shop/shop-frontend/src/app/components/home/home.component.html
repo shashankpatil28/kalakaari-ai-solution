@@ -16,18 +16,15 @@
       }
     </div>
   }
-
   @if (errorMessage() && !isLoading()) {
     <div class="text-center text-red-400 text-lg font-medium py-16">
        <p>{{ errorMessage() }}</p>
     </div>
   }
-
   @if (!isLoading() && allProducts().length === 0 && !errorMessage()) { <div class="text-center text-text-muted text-lg py-16">
       <p>No artisan products found yet. The gallery is currently empty.</p>
     </div>
   }
-
   @if (!isLoading() && filteredProducts().length === 0 && allProducts().length > 0) {
     <div class="text-center text-text-muted text-lg py-16">
       <p>No products found matching your search.</p>
@@ -35,8 +32,11 @@
     </div>
   }
 
-  @if (!isLoading() && filteredProducts().length > 0) { <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-      @for (product of filteredProducts(); track product.verification.public_id) { <div
+
+  @if (!isLoading() && filteredProducts().length > 0) { 
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+      @for (product of filteredProducts(); track product.verification.public_id) { 
+        <div
           class="bg-surface rounded-xl overflow-hidden border border-secondary transition-all duration-300 group relative hover:border-primary hover:shadow-lg hover:shadow-primary/10 flex flex-col"
           > 
             <div class="relative w-full h-72 overflow-hidden">
@@ -54,7 +54,7 @@
             <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end items-end p-4">
                 
                 <button
-                  (click)="verify(product.verification.public_id)"
+                  (click)="verify(product)" 
                   [disabled]="verifyingId() === product.verification.public_id"
                   class="flex items-center justify-center py-2 px-4 rounded-lg text-background bg-primary hover:bg-primary-light transition-colors duration-300 font-semibold text-sm disabled:opacity-70 disabled:cursor-wait"
                 >
@@ -96,3 +96,11 @@
     </div>
   }
 </div>
+
+@if (selectedVerificationData(); as verificationData) {
+  <app-verification-modal
+    [verificationData]="verificationData"
+    [productName]="selectedProductName()"
+    (close)="closeModal()"
+  />
+}
