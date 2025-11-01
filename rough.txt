@@ -44,3 +44,16 @@ gcloud run deploy agentic-service \
   --port 8000 \
   --allow-unauthenticated \
   --set-env-vars=SESSION_SERVICE_URI=postgresql+psycopg2://neondb_owner:npg_rXMseISfY8k7@ep-floral-sunset-addtzcd1-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require,DATABASE_URL=postgresql+psycopg2://neondb_owner:npg_rXMseISfY8k7@ep-floral-sunset-addtzcd1-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require,MODEL_NAME=gemini-2.5-flash,GOOGLE_API_KEY=AIzaSyAJmjmR6JTA6mTLrRBI8x-WzAy9bHS5nBg,GOOGLE_GENAI_USE_VERTEXAI=FALSE
+
+
+  gcloud run deploy ${SERVICE_BACKEND} \
+  --image=${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO}/${SERVICE_BACKEND}:backend-latest \
+  --region=${REGION} \
+  --project=${PROJECT_ID} \
+  --allow-unauthenticated \
+  --cpu=1 \
+  --memory=512Mi \
+  --port=8000 \
+  --set-env-vars=MONGO_URI=mongodb+srv://shashank28:shash2811@shashank28.ytqocxe.mongodb.net/?appName=shashank28 \
+  --set-env-vars=DB_NAME='kalaakari_shop_db' \
+  --set-env-vars=SECRET_KEY=shashankpatil2811

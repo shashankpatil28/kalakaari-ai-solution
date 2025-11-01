@@ -77,9 +77,15 @@ async def add_product(data: ProductPayload): # <-- USE NEW MODEL
         raise HTTPException(status_code=500, detail=f"DB insert error: {e}")
 
     verification_url = f"/verify/{public_id}"
+    
+    # --- MODIFIED BLOCK ---
+    # Determine which photo field to return, prioritizing photo_url
+    photo_to_return = data.art.photo_url if data.art.photo_url is not None else data.art.photo
+    # --- END MODIFIED BLOCK ---
+
     return {
         "artisan_info": {"name": data.artisan.name, "location": data.artisan.location},
-        "art_info": {"name": data.art.name, "description": data.art.description, "photo": data.art.photo_url}, # <-- Use photo_url
+        "art_info": {"name": data.art.name, "description": data.art.description, "photo": photo_to_return}, # <-- Use photo_to_return
         "verification": {
             "public_id": public_id,
             # "public_hash": REMOVED
@@ -106,6 +112,8 @@ async def get_products():
         art = orig.get("art", {})
         public_id = d.get("public_id")
         verification_url = f"/verify/{public_id}" if public_id else ""
+
+        # COMPATIBILITY FIX: Check for 'photo_url' first, fall back to 'photo'
         photo = art.get("photo_url") or art.get("photo", "")
 
         out.append({
@@ -113,6 +121,7 @@ async def get_products():
             "art_info": {"name": art.get("name", ""), "description": art.get("description", ""), "photo": photo}, # <-- Use compatible photo
             "verification": {
                 "public_id": public_id or "", 
+                # "public_hash": REMOVED
                 "verification_url": verification_url
             },
             "timestamp": d.get("timestamp", "")

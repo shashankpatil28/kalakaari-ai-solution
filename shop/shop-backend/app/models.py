@@ -1,5 +1,6 @@
 # app/models.py
 from pydantic import BaseModel, EmailStr, Field
+from typing import Optional # <-- IMPORT Optional
 
 class Artisan(BaseModel):
     name: str
@@ -11,7 +12,8 @@ class Artisan(BaseModel):
 class Art(BaseModel):
     name: str
     description: str
-    photo_url: str = Field(..., alias="photo_url") # Expect 'photo_url' from the payload
+    photo_url: Optional[str] = Field(None, alias="photo_url") # <-- Make optional, keep alias
+    photo: Optional[str] = None # <-- Add optional 'photo' field
 
 class ProductPayload(BaseModel):
     public_id: str

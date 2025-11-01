@@ -53,8 +53,7 @@ def call_metadata_similarity_search(onboarding_data: str) -> dict:
         meta_search_url = os.getenv("METADATA_SEARCH_URL", "https://master-ip-service-978458840399.asia-southeast1.run.app/metadata/search") # Replace with your actual URL
         logger.info(f"[ip_agent] Sending data to metadata search endpoint: {meta_search_url}")
 
-        # Make the POST request with JSON payload
-        response = requests.post(meta_search_url, json=search_payload, timeout=30)
+        response = requests.post(meta_search_url, json=search_payload, timeout=90)
         response.raise_for_status()
 
         search_results = response.json()
