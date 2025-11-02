@@ -145,7 +145,6 @@ def call_image_similarity_search(image_url: str) -> dict:
                 return {"status": "duplicate", "score": float(top_match_score), "message": message}
             else:
                 print(f"--- TOOL: Similarity below threshold, returning status: unique, score: {top_match_score} ---")
-                # Explicitly return score even when unique but below threshold
                 return {"status": "unique", "score": float(top_match_score)}
         # --- END OF MODIFICATION ---
 

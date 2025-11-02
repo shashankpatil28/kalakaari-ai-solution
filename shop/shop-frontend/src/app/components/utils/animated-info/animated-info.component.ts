@@ -7,7 +7,7 @@ import { CommonModule } from '@angular/common';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="h-10 text-lg text-text-muted text-center relative">
+    <div class="h-10 text-xl font-bold text-muted text-center relative mb-4">
       @for (item of phrases; track $index) {
         <span 
           class="absolute left-0 right-0 transition-opacity duration-500 ease-in-out"
@@ -22,10 +22,10 @@ import { CommonModule } from '@angular/common';
 export class AnimatedInfoComponent implements OnInit, OnDestroy {
   
   @Input() phrases = [
-    { text: "Are you an Artisan?", duration: 3000 },
-    { text: "Protect your craft with AI-powered IP.", duration: 3000 },
-    { text: "Are you an Art Lover?", duration: 3000 },
-    { text: "Discover and buy unique, verified art.", duration: 3000 }
+    { text: "Are you an Artisan?", duration: 2000 },
+    { text: "Protect your craft with AI-powered IP.", duration: 2000 },
+    { text: "Are you an Art Lover?", duration: 2000 },
+    { text: "Discover and buy unique, verified art.", duration: 2000 }
   ];
 
   currentPhraseIndex = signal(0);
